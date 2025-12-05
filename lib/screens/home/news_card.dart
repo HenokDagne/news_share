@@ -9,10 +9,12 @@ class NewsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+    
       child: Card(
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        color: Colors.black,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -142,23 +144,38 @@ class NewsCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: Row(
+                    child: Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const SizedBox(width: 8),
                         const Icon(Icons.favorite_border, color: Colors.pink),
-                        const SizedBox(width: 6),
-                        Text('${item.likes}'),
-                        const SizedBox(width: 12),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 56),
+                          child: Text(
+                            '${item.likes}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         const Icon(
                           Icons.mode_comment_outlined,
                           color: Colors.grey,
                         ),
-                        const SizedBox(width: 6),
-                        Text('${item.comments}'),
-                        const SizedBox(width: 12),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 56),
+                          child: Text(
+                            '${item.comments}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         const Icon(Icons.share, color: Colors.grey),
-                        const SizedBox(width: 6),
-                        Text('${item.shares}'),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 56),
+                          child: Text(
+                            '${item.shares}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   ),

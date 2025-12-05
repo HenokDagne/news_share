@@ -76,7 +76,7 @@ class _HomePageState extends State<HomePage> {
         child: const TopAppBar(),
       ),
       body: SafeArea(
-        child: Column(
+        child: Column(   
           children: [
             const CreatePostBox(),
             Expanded(
