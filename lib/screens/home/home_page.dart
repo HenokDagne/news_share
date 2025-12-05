@@ -76,7 +76,8 @@ class _HomePageState extends State<HomePage> {
         child: const TopAppBar(),
       ),
       body: SafeArea(
-        child: Column(   
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const CreatePostBox(),
             Expanded(
