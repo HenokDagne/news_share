@@ -5,6 +5,9 @@ import 'top_app_bar.dart';
 import 'create_post_box.dart';
 import 'news_card.dart';
 import 'bottom_nav.dart';
+import '../post/post_page.dart';
+import '../notification/notification_page.dart';
+import '../profile/profile_page.dart';
 
 class NewsItem {
   final String source;
@@ -67,6 +70,34 @@ class _HomePageState extends State<HomePage> {
 
   int _currentIndex = 0;
 
+  void _onNavTap(int i) {
+    if (i == _currentIndex) return;
+    switch (i) {
+      case 0:
+        return; // already home
+      case 2:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const PostPage()),
+        );
+        break;
+      case 3:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const NotificationPage()),
+        );
+        break;
+      case 4:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfilePage()),
+        );
+        break;
+      default:
+        setState(() => _currentIndex = i);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,7 +137,7 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
-        onChanged: (i) => setState(() => _currentIndex = i),
+        onChanged: _onNavTap,
       ),
     );
   }

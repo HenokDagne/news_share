@@ -6,7 +6,8 @@ class CreatePostBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.transparent,
+      margin: EdgeInsets.only(top:4),
+      color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
@@ -25,9 +26,12 @@ class CreatePostBox extends StatelessWidget {
                 borderRadius: BorderRadius.circular(22),
               ),
               alignment: Alignment.centerLeft,
-              child: const Text(
-                "What's on your mind?",
-                style: TextStyle(color: Colors.grey),
+              child: const TextField(
+                decoration: InputDecoration.collapsed(
+                  hintText: "What's on your mind?",
+                  hintStyle: TextStyle(color: Colors.grey),
+                  
+                ),
               ),
             ),
           ),

@@ -23,15 +23,18 @@ class BottomNavBar extends StatelessWidget {
             _buildItem(icon: Icons.home, index: 0),
             _buildItem(icon: Icons.search, index: 1),
             GestureDetector(
-              onTap: () => onChanged(2),
+              onTap: () {
+                onChanged(2);
+              },
               child: Container(
                 height: 52,
                 width: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB),
+                  color: const Color.fromRGBO(242, 242, 249, 1),
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.black, width: 2),
                 ),
-                child: const Icon(Icons.add, color: Colors.white),
+                child: const Icon(Icons.add, color: Colors.black, size: 28),
               ),
             ),
             _buildItem(icon: Icons.notifications, index: 3),
@@ -43,12 +46,21 @@ class BottomNavBar extends StatelessWidget {
   }
 
   Widget _buildItem({required IconData icon, required int index}) {
-    final color = index == currentIndex ? const Color(0xFF2563EB) : Colors.grey;
+    final bool isActive = index == currentIndex;
+
     return InkWell(
       onTap: () => onChanged(index),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6),
-        child: Icon(icon, color: color),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        width: isActive ? 56 : 40, // ✅ wider when active
+        height: 40,
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: isActive ? 28 : 22, // optional: grow icon too
+          color: isActive ? const Color.fromARGB(255, 15, 15, 17) : Colors.grey,
+        ),
       ),
     );
   }
