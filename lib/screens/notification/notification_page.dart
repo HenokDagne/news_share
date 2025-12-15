@@ -25,6 +25,7 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   void _onNavTap(int i) {
+    debugPrint('BottomNav tapped: $i (current=$_currentIndex)');
     if (i == _currentIndex) return;
     switch (i) {
       case 0:
@@ -81,9 +82,7 @@ class _NotificationPageState extends State<NotificationPage> {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (snapshot.hasError) {
-                    return Center(
-                      child: Text('Error: ${snapshot.error}'),
-                    );
+                    return Center(child: Text('Error: ${snapshot.error}'));
                   }
                   final items = snapshot.data ?? [];
                   if (items.isEmpty) {
@@ -120,8 +119,8 @@ class _NotificationPageState extends State<NotificationPage> {
                           child: Row(
                             children: [
                               const SizedBox(width: 8),
-                              // Safe avatar from model (handles errors)                              flutter pub get
-                              n.buildAvatar(size: 50),
+                              // Safe avatar from model (handles errors)
+                              n.buildAvatar(context, size: 50),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Column(
@@ -138,7 +137,6 @@ class _NotificationPageState extends State<NotificationPage> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
-                                        
                                       ),
                                       child: Text(
                                         n.message,
@@ -183,4 +181,3 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 }
-

@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import '../profile/profile_page.dart';
 
 class NotificationData {
   final String avatar;
@@ -24,8 +25,9 @@ class NotificationData {
 
   // static loader from assets/notification.json
   static Future<List<NotificationData>> readNotifications() async {
-    final String response =
-        await rootBundle.loadString('assets/notification.json');
+    final String response = await rootBundle.loadString(
+      'assets/notification.json',
+    );
     final List<dynamic> data = jsonDecode(response);
     return data
         .map((e) => NotificationData.fromJson(e as Map<String, dynamic>))
@@ -33,31 +35,50 @@ class NotificationData {
   }
 
   /// Safe avatar widget with fallback if network image fails
-  Widget buildAvatar({double size = 50}) {
-    if (avatar.isEmpty) {
-      return _fallbackAvatar(size);
-    }
+Widget buildAvatar(BuildContext context, {double size = 50}) {
+  final Widget avatarWidget = avatar.isEmpty
+      ? _fallbackAvatar(context, size)
+      : ClipRRect(
+          borderRadius: BorderRadius.circular(size / 2),
+          child: Image.network(
+            avatar,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return _fallbackAvatar(context, size);
+            },
+          ),
+        );
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(size / 2),
-      child: Image.network(
-        avatar,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          // If network fails, show local / placeholder avatar
-          return _fallbackAvatar(size);
-        },
-      ),
-    );
-  }
+  return InkWell(
+    borderRadius: BorderRadius.circular(size / 2),
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfilePage()),
+      );
+    },
+    child: avatarWidget,
+  );
+}
 
-  Widget _fallbackAvatar(double size) {
+
+  Widget _fallbackAvatar(BuildContext context, double size) {
     return CircleAvatar(
       radius: size / 2,
       backgroundColor: Colors.grey.shade300,
-      child: const Icon(Icons.person, color: Colors.white),
+      child: IconButton(
+        icon: const Icon(Icons.person, color: Colors.white),
+        tooltip: 'View profile',
+        onPressed: () {
+          // navigate to profile page
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfilePage()),
+          );
+        },
+      ),
     );
   }
 }

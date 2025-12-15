@@ -4,6 +4,8 @@ import '../home/bottom_nav.dart';
 import '../home/home_page.dart';
 import '../post/post_page.dart';
 import '../notification/notification_page.dart';
+import 'statItem.dart';
+import 'profileItem.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -39,116 +41,119 @@ class _ProfilePageState extends State<ProfilePage> {
       case 4:
         return; // already here
       default:
-        setState(() => _currentIndex = i); // stub for other tabs
+        setState(() => _currentIndex = i);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: const PreferredSize(
-        preferredSize: Size.fromHeight(70),
-        child: TopAppBar(),
-      ),
-      body: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Header banner with gradient
-          Container(
-            height: 200,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-              ),
-            ),
-          ),
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: const PreferredSize(
+      preferredSize: Size.fromHeight(70),
+      child: TopAppBar(),
+    ),
+    body: LayoutBuilder(
+      builder: (context, constraints) {
+        final double maxBodyHeight = constraints.maxHeight; // full screen height
 
-          // Content below the header
-          Positioned.fill(
-            top: 200,
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(16, 80, 16, 0),
-              alignment: Alignment.topLeft,
-              child: const Text(
-                'John Doe',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+        // height from top of screen down to where profile content starts
+        const double profileTop = 140;
+        final double availableForProfile = maxBodyHeight - profileTop;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              height: 200,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                 ),
               ),
             ),
-          ),
-
-          // Overlapping avatar with white ring at the bottom-left, above body
-          // ...existing code...
-          Positioned(
-            left: 16,
-            top: 140,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
+            Positioned(
+              left: 16,
+              right: 16,
+              top: profileTop,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  // force the whole Column (including Profileitem) to fit
+                  maxHeight: availableForProfile,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // avatar, texts, stats...
+                    Container(
+                      width: 120,
+                      height: 120,
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: const CircleAvatar(
-                    backgroundColor: Color(0xFF6C6CD1),
-                    child: Icon(
-                      Icons.person,
-                      color: Color(0xFF4D4DB0),
-                      size: 64,
+                      child: const CircleAvatar(
+                        backgroundColor: Color(0xFF6C6CD1),
+                        child: Icon(
+                          Icons.person,
+                          color: Color(0xFF4D4DB0),
+                          size: 64,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 2), // space below avatar
-                Container(
-                alignment: Alignment.topLeft,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'John Doe',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      color: Color.fromARGB(255, 24, 23, 23),
-                      fontFamily: 'Arial',
+                    const SizedBox(height: 2),
+                    const Text(
+                      'John Doe',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Arial',
+                      ),
                     ),
-                  ),
-                ),
+                    const SizedBox(height: 4),
+                    const Text('john@example.com'),
+                    const SizedBox(height: 6),
+                    const Text('News enthusiast | Tech lover'),
+                    const SizedBox(height: 12),
+                    const Divider(thickness: 1, color: Color(0xFFECECEC)),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        Expanded(child: StatItem(value: '156', label: 'Posts')),
+                        Expanded(child: StatItem(value: '2.4K', label: 'Followers')),
+                        Expanded(child: StatItem(value: '892', label: 'Following')),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
 
-                Container(
-                  height: 50,
-                  width: 300,
-                  color: Colors.black,
-                )
-              ],
+                    // Let Profileitem use remaining space but not overflow
+                    const Expanded(
+                      child: Profileitem(),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          // ...existing code...
-        ],
-      ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _currentIndex,
-        onChanged: _onNavTap,
-      ),
-    );
-  }
+          ],
+        );
+      },
+    ),
+    bottomNavigationBar: BottomNavBar(
+      currentIndex: _currentIndex,
+      onChanged: _onNavTap,
+    ),
+  );
+}
+
 }
