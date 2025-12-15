@@ -4,6 +4,8 @@ import '../home/bottom_nav.dart';
 import '../home/home_page.dart';
 import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
+import 'post_area.dart';
+import 'post_photo.dart';
 
 class PostPage extends StatefulWidget {
   const PostPage({super.key});
@@ -58,33 +60,56 @@ class _PostPageState extends State<PostPage> {
             color: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Color(0xFF7C3AED),
-                  child: Icon(Icons.person, color: Colors.white),
+                CircleAvatar(
+                  radius: 25,
+                  backgroundColor: const Color(0xFF7C3AED),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.person,
+                      color: Color.fromARGB(255, 9, 12, 110),
+                      size: 29,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProfilePage()),
+                      );
+                    },
+                  ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Container(
-                    height: 44,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    child: const TextField(
-                      decoration: InputDecoration.collapsed(
-                        hintText: "What's on your mind?",
-                        hintStyle: TextStyle(color: Colors.grey),
+                  // <- this is REQUIRED
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'John Doe',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
-                    ),
+                      Text(
+                        'Publish',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                      // now gets finite width from Expanded
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+          SizedBox(height: 2),
+          PostArea(),
+          SizedBox(height: 4),
+          PostPhoto(),
+          SizedBox(height: 4,)
         ],
       ),
       bottomNavigationBar: BottomNavBar(
