@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'publish_button.dart';
 class PostPhoto extends StatelessWidget {
   const PostPhoto({super.key});
   @override
@@ -81,7 +82,7 @@ class PostPhoto extends StatelessWidget {
                 ),
                 child: IconButton(
                   mouseCursor: SystemMouseCursors.click,
-                  icon: const Icon(Icons.link,
+                  icon: const Icon(Icons.add_link,
                       color: Colors.black, size: 24),
                   onPressed: () async {
                     debugPrint('Link button pressed.');
@@ -92,6 +93,11 @@ class PostPhoto extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 4),
+        Container(
+          margin: const EdgeInsetsDirectional.symmetric(horizontal: 6, vertical: 2),
+          child: const PublishButton(),
+        )
       ],
     );
   }
