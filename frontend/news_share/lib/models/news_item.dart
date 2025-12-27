@@ -5,9 +5,7 @@ class NewsItem {
   final String title;
   final String subtitle;
   final String category;
-  final int likes;
-  final int comments;
-  final int shares;
+  final String imageUrl;
 
   NewsItem({
     required this.source,
@@ -15,9 +13,7 @@ class NewsItem {
     required this.title,
     required this.subtitle,
     required this.category,
-    required this.likes,
-    required this.comments,
-    required this.shares,
+    required this.imageUrl,
   });
 
   factory NewsItem.fromJson(Map<String, dynamic> json) {
@@ -27,10 +23,7 @@ class NewsItem {
       title: json['title'] ?? '',
       subtitle: json['subtitle'] ?? '',
       category: json['category'] ?? json['tag'] ?? '',
-      likes: (json['likes'] ?? 0) as int,
-      comments: (json['comments'] ?? 0) as int,
-      shares: (json['shares'] ?? 0) as int,
+      imageUrl: json['urlToImage'] ?? '',   // ✅ here
     );
   }
 }
-

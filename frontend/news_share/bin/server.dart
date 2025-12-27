@@ -29,7 +29,7 @@ Future<void> main() async {
       
       print('✅ NewsItem API on http://${server.address.host}:$port/news');
       print('🔍 Your PC IPs: $localIps');
-      print('📱 Flutter: http://YOUR_PC_IP:$port/news');
+      print('📱 Flutter: http://192.168.1.8:$port/news');
       print('🌐 Test on SAME PC: http://localhost:$port/news');
       print('═' * 80);
       break;

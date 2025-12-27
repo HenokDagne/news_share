@@ -1,48 +1,15 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import '../../services/news_service.dart';
+import '../../models/news_item.dart';  // ✅ Use shared model
 import 'top_app_bar.dart';
 import 'create_post_box.dart';
 import 'news_card.dart';
-import 'bottom_nav.dart';
 import '../post/post_page.dart';
 import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
-
-class NewsItem {
-  final String source;
-  final String timeAgo;
-  final String title;
-  final String subtitle;
-  final String category;
-  final int likes;
-  final int comments;
-  final int shares;
-
-  NewsItem({
-    required this.source,
-    required this.timeAgo,
-    required this.title,
-    required this.subtitle,
-    required this.category,
-    required this.likes,
-    required this.comments,
-    required this.shares,
-  });
-
-  factory NewsItem.fromJson(Map<String, dynamic> json) {
-    return NewsItem(
-      source: json['source'] ?? '',
-      timeAgo: json['timeAgo'] ?? '',
-      title: json['title'] ?? '',
-      subtitle: json['subtitle'] ?? '',
-      category: json['category'] ?? json['tag'] ?? '',
-      likes: (json['likes'] ?? 0) as int,
-      comments: (json['comments'] ?? 0) as int,
-      shares: (json['shares'] ?? 0) as int,
-    );
-  }
-}
+import 'bottom_nav.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -52,49 +19,51 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Future<List<NewsItem>> _newsFuture;
+  final NewsService _newsService = NewsService();
+  late Future<List<NewsItem>> newsFuture;
+  int currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _newsFuture = _loadNews();
+    newsFuture = _loadNews();
   }
 
   Future<List<NewsItem>> _loadNews() async {
-    final jsonStr = await rootBundle.loadString('assets/news_share.json');
-    final List<dynamic> data = json.decode(jsonStr) as List<dynamic>;
-    return data
-        .map((e) => NewsItem.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+    try {
+      return await _newsService.fetchNews();  // ✅ Direct API call
+    } catch (e) {
+      print('💥 API failed, using local fallback: $e');
+      return _loadLocalNews();
+    }
   }
 
-  int _currentIndex = 0;
+  Future<List<NewsItem>> _loadLocalNews() async {
+    final jsonStr = await rootBundle.loadString('assets/news/share.json');
+    final List<dynamic> data = json.decode(jsonStr) as List<dynamic>;
+    return data.map((e) => NewsItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
 
-  void _onNavTap(int i) {
-    if (i == _currentIndex) return;
+  void onNavTap(int i) {
+    if (i == currentIndex) return;
     switch (i) {
-      case 0:
-        return; // already home
       case 2:
         Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const PostPage()),
+          context, MaterialPageRoute(builder: (context) => const PostPage()),
         );
         break;
       case 3:
         Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const NotificationPage()),
+          context, MaterialPageRoute(builder: (context) => const NotificationPage()),
         );
         break;
       case 4:
         Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const ProfilePage()),
+          context, MaterialPageRoute(builder: (context) => const ProfilePage()),
         );
         break;
       default:
-        setState(() => _currentIndex = i);
+        setState(() => currentIndex = i);
     }
   }
 
@@ -102,9 +71,9 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
-        child: const TopAppBar(),
+      appBar: const PreferredSize(
+        preferredSize: Size.fromHeight(70),
+        child: TopAppBar(),
       ),
       body: SafeArea(
         child: Column(
@@ -113,21 +82,35 @@ class _HomePageState extends State<HomePage> {
             const CreatePostBox(),
             Expanded(
               child: FutureBuilder<List<NewsItem>>(
-                future: _newsFuture,
+                future: newsFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (snapshot.hasError) {
-                    return const Center(child: Text('Failed to load news'));
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error, size: 64, color: Colors.red),
+                          const SizedBox(height: 16),
+                          Text('Error: ${snapshot.error}'),
+                          ElevatedButton(
+                            onPressed: () => setState(() => newsFuture = _loadNews()),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    );
                   }
                   final items = snapshot.data ?? [];
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(top: 8),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      return NewsCard(item: items[index]);
-                    },
+                  return RefreshIndicator(
+                    onRefresh: () => Future.value(newsFuture = _loadNews()),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.only(top: 8),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) => NewsCard(item: items[index]),
+                    ),
                   );
                 },
               ),
@@ -136,8 +119,8 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       bottomNavigationBar: BottomNavBar(
-        currentIndex: _currentIndex,
-        onChanged: _onNavTap,
+        currentIndex: currentIndex,
+        onChanged: onNavTap,
       ),
     );
   }

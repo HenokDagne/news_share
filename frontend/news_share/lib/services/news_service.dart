@@ -1,54 +1,41 @@
 import 'dart:convert';
-import 'dart:io';  // ✅ For platform detection
-import 'package:flutter/foundation.dart';  // ✅ For kIsWeb
 import 'package:http/http.dart' as http;
 import '../models/news_item.dart';
 
 class NewsService {
-  // ✅ Dynamic URL based on platform
-  static String get baseUrl {
-    if (kIsWeb) {
-      // Flutter Web: Use ngrok/public URL or localhost
-      return 'http://localhost:3000';
-    }
-    // Mobile: Use PC IP
-    return 'http://192.168.1.8:3000';
-  }
-  
-  static const Duration _timeout = Duration(seconds: 10);
+  static const String _baseUrl = 'http://127.0.0.1:8000';
+  static const Duration timeout = Duration(seconds: 20);
 
-  static Future<List<NewsItem>> fetchNews() async {
+  Future<List<NewsItem>> fetchNews() async {
     try {
-      print('🌐 Using URL: $baseUrl/news');  // ✅ Debug
-      print('📱 Platform: ${kIsWeb ? "Web" : "Mobile"}');
-      
       final response = await http
-          .get(Uri.parse('$baseUrl/news'))
-          .timeout(_timeout);
-
-      print('📡 Status: ${response.statusCode}');  // ✅ Debug
+          .get(
+            Uri.parse('$_baseUrl/news/'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(timeout);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        List<dynamic> articles;
+        final dynamic data = jsonDecode(response.body);
 
-        if (data is Map && data['articles'] != null) {
-          articles = data['articles'] as List<dynamic>;
-        } else if (data is List) {
-          articles = data;
-        } else {
-          throw Exception('Invalid news format');
+        // Handle both List and Map responses
+        List<Map<String, dynamic>> articles = [];
+
+        if (data is List) {
+          articles = data.cast<Map<String, dynamic>>();
+        } else if (data is Map) {
+          articles =
+              (data['articles'] ?? [])?.cast<Map<String, dynamic>>() ?? [];
         }
 
-        return articles
-            .map((item) => NewsItem.fromJson(item as Map<String, dynamic>))
-            .toList();
+        print('✅ Fetched ${articles.length} news articles');
+        return articles.map((article) => NewsItem.fromJson(article)).toList();
       } else {
-        throw Exception('Server error: ${response.statusCode}');
+        throw Exception('Failed to load news: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ NewsService Error: $e');
-      rethrow;
+      print('💥 NewsService Error: $e');
+      throw Exception('Network error: $e');
     }
   }
 }

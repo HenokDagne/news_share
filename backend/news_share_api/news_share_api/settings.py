@@ -10,10 +10,16 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Load .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+# Now read the key
+NEWSAPI_KEY = os.getenv('NEWSAPI_KEY')
 
 
 # Quick-start development settings - unsuitable for production
@@ -37,6 +43,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -115,3 +123,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+# settings.py
+AUTH_USER_MODEL = "core.CustomUser"
+
+# Add these CORS settings
+CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:8000",  # Django backend
+    "http://localhost:8000",   # Django backend
+    "http://localhost:3000",   # Flutter web dev server
+    "http://127.0.0.1:3000",  # Flutter web dev server
+]
+
+CORS_ALLOW_ALL_ORIGINS = False  # Security: only allow specific origins
+CORS_ALLOW_CREDENTIALS = True
+
+# Install: pip install django-cors-headers (already in requirements.txt)
+# settings.py
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
