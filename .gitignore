@@ -59,8 +59,11 @@ frontend/news_share/web/manifest.json
 *.sqlite
 *.sqlite3
 
-# Keep .env.example templates (commit these)
-!backend/news_share_api/.env.example
+# Ignore all .env files anywhere
+.env
+*.env
+backend/news_share_api/.env
+
 !frontend/news_share/.env.example
 
 # Temporary files
