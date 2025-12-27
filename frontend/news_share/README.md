@@ -1,4 +1,3 @@
-
 ## NewsShare Database ER Diagram
 
 The ER diagram represents the complete PostgreSQL database schema for the NewsShare prototype application, capturing all entities, relationships, and constraints defined in the software architecture document.[^1]
@@ -121,3 +120,50 @@ LIMIT 20 OFFSET $page*20;
 ```
 
 This ER diagram supports all NewsShare use cases: authentication (users table), content creation (posts), social engagement (follows, comments, likes), news aggregation (source_articles), sharing/reposting (reposts), and notifications. The normalized design ensures data integrity while supporting efficient feed generation and social features for the prototype scope.[^1]
+
+
+
+news_share_full_project/                          # Root folder
+├── backend/                                      # Django Server
+│   ├── news_share_api/                           # Django project
+│   │   ├── manage.py
+│   │   ├── news_share_api/
+│   │   │   ├── __init__.py
+│   │   │   ├── settings.py                      # CORS, DRF settings
+│   │   │   ├── urls.py                          # /api/news/
+│   │   │   └── wsgi.py
+│   │   ├── news/                                # Django app
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py
+│   │   │   ├── apps.py
+│   │   │   ├── models.py
+│   │   │   ├── views.py                        # /news/ endpoint
+│   │   │   ├── urls.py                         # api/news/
+│   │   │   ├── migrations/
+│   │   │   └── tests.py
+│   │   ├── .env                                # NEWS_API_KEY
+│   │   ├── requirements.txt
+│   │   └── db.sqlite3                         # Dev DB
+│   └── README.md                               # Backend setup
+│
+└── frontend/                                    # Flutter App
+    ├── news_share/                             # Flutter project
+    │   ├── android/
+    │   ├── ios/
+    │   ├── lib/
+    │   │   ├── main.dart
+    │   │   ├── models/
+    │   │   │   └── news_item.dart             # Shared model
+    │   │   ├── services/
+    │   │   │   └── news_service.dart          # http://backend:3000/api/news/
+    │   │   └── screen/
+    │   │       └── home/
+    │   │           ├── home_page.dart
+    │   │           ├── news_card.dart
+    │   │           ├── top_app_bar.dart
+    │   │           ├── create_post_box.dart
+    │   │           └── bottom_nav.dart
+    │   ├── pubspec.yaml                        # http: ^1.2.1
+    │   ├── web/
+    │   └── test/
+    └── README.md                               # Flutter setup

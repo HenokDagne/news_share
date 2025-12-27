@@ -1,52 +1,83 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# OS generated files
 .DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+Thumbs.db
+*.swp
+*.swo
 
-# IntelliJ related
+# IDE/Editor
+.vscode/
+.idea/
 *.iml
 *.ipr
 *.iws
-.idea/
+.atom/
+.history/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
+# Dependency directories
+**/node_modules/
 .pub-cache/
-.pub/
+.dart_tool/
+
+# Flutter build outputs
 /build/
+**/build/
+**/ios/Flutter/.last_build_id
+.flutter-plugins-dependencies
+.pub/
 /coverage/
 
-# Symbolication related
-app.*.symbols
+# Django/Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
 
-# Obfuscation related
-app.*.map.json
+# Backend Django
+backend/news_server/db.sqlite3
+backend/news_server/.env
+backend/news_server/__pycache__/
+backend/news_server/**/*.pyc
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# Frontend Flutter
+frontend/news_share/.env
+frontend/news_share/.dart_tool/
+frontend/news_share/build/
+frontend/news_share/android/.gradle/
 
-# Environment variables (contains sensitive data like database passwords, API keys)
-.env
-.env.local
-.env.*.local
-# Keep .env.example as a template (uncomment if you create one)
-# !.env.example
+# Flutter Web
+frontend/news_share/web/favicon.png
+frontend/news_share/web/icons/
+frontend/news_share/web/index.html
+frontend/news_share/web/manifest.json
+
+# Logs & Databases
+*.log
+*.sql
+*.sqlite
+*.sqlite3
+
+# Keep .env.example templates (commit these)
+!backend/news_server/.env.example
+!frontend/news_share/.env.example
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# IDE specific
+out/
+
+# Android Studio
+captures/
+.externalNativeBuild/
+
+# Flutter specific
+generated_plugin_registrant.dart
+
+# Miscellaneous
+*.class
+migrate_working_dir/
