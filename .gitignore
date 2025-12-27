@@ -60,7 +60,7 @@ frontend/news_share/web/manifest.json
 *.sqlite3
 
 # Keep .env.example templates (commit these)
-!backend/news_server/.env.example
+!backend/news_share_api/.env.example
 !frontend/news_share/.env.example
 
 # Temporary files
