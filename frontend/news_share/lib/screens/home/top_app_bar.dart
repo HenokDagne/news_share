@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
+import '../auth/signup.dart';
+import '../auth/login.dart';
 
 class TopAppBar extends StatelessWidget {
   const TopAppBar({super.key});
@@ -105,6 +107,24 @@ class TopAppBar extends StatelessWidget {
                   radius: 20,
                   backgroundColor: Color(0xFF7C3AED),
                   child: Icon(Icons.person, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(2),
+
+                child: const CircleAvatar(
+                  radius: 20,
+
+                  child: Icon(Icons.login, color: Colors.black, size: 20),
                 ),
               ),
             ),

@@ -10,10 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+from os import getenv  # if module is missing
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-
+from datetime import timedelta
 # Load .env file
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'))
@@ -44,7 +45,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'core',
+    'post',
 ]
 
 MIDDLEWARE = [
@@ -82,10 +85,15 @@ WSGI_APPLICATION = 'news_share_api.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': getenv('DB_NAME')  ,
+        'USER': getenv('DB_USER'),
+        'PASSWORD': getenv('DB_PASSWORD'),
+        'HOST': getenv('DB_HOST', 'localhost'),
+        'PORT': getenv('DB_PORT', '5432'),
     }
 }
+
 
 
 # Password validation
@@ -140,3 +148,21 @@ CORS_ALLOW_CREDENTIALS = True
 # Install: pip install django-cors-headers (already in requirements.txt)
 # settings.py
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+REST_FRAMEWORK = {
+    
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    )
+
+}
+
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),   # Access token expires in 5 min
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),     # Refresh token valid for 1 day
+    "ROTATE_REFRESH_TOKENS": True,                   # Create new refresh token on refresh
+    "BLACKLIST_AFTER_ROTATION": True,                # Old refresh tokens go to blacklist
+    "UPDATE_LAST_LOGIN": True,                       # Updates last login date
+}
