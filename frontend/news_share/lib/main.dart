@@ -3,6 +3,7 @@ import 'screens/home/home_page.dart';
 //import 'firebase_options.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'screens/home/splash_screen.dart';
 
 class NewsShareApp extends StatelessWidget {
   const NewsShareApp({super.key});
@@ -17,7 +18,7 @@ class NewsShareApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
         useMaterial3: true,
       ),
-      home: const HomePage(),
+      home: const SplashScreen(),
     );
   }
 }

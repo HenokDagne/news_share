@@ -49,6 +49,7 @@ class _PostListPageState extends State<PostListPage> {
         itemBuilder: (context, index) {
           final post = posts[index];
           return PostCard(
+            postId: post['id']?.toString() ?? '',
             title: post['title']?.toString() ?? '',
             content: post['content']?.toString() ?? '',
             imageUrl: post['image_url']?.toString(),
@@ -60,6 +61,9 @@ class _PostListPageState extends State<PostListPage> {
             },
             onDelete: () {
               // TODO: implement delete action
+              setState(() {
+                posts.removeAt(index);
+              });
             },
             isLoading: isLoading, // optional, shows skeleton if true
           );

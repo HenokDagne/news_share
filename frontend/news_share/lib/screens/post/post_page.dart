@@ -150,12 +150,13 @@ class _PostPageState extends State<PostPage> {
                       padding: EdgeInsets.all(12),
                       child: CircularProgressIndicator(),
                     ),
-
+                   SizedBox(height: 12),
                   PublishButton(onPressed: _publishPost),
                 ],
               ),
             ),
           ),
+         
           const Expanded(
             flex: 5,
             child: PostListPage(),

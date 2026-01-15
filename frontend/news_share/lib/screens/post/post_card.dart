@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'delete_post.dart';
 
 class PostCard extends StatefulWidget {
+  final String postId;
   final String? title;
   final String? content;
   final String? imageUrl;
@@ -12,6 +14,7 @@ class PostCard extends StatefulWidget {
 
   const PostCard({
     super.key,
+    required this.postId,
     this.title,
     this.content,
     this.imageUrl,
@@ -163,9 +166,17 @@ class _PostCardState extends State<PostCard> {
                       ),
                       PopupMenuButton<String>(
                         icon: const Icon(Icons.more_vert),
-                        onSelected: (value) {
+                        onSelected: (value) async {
                           if (value == 'edit') widget.onEdit?.call();
-                          if (value == 'delete') widget.onDelete?.call();
+                          if (value == 'delete') {
+                            await DeletePostService.deletePost(widget.postId);
+                            if (widget.onDelete != null) widget.onDelete!();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Post deleted')),
+                              );
+                            }
+                          }
                         },
                         itemBuilder: (_) => const [
                           PopupMenuItem(value: 'edit', child: Text('Edit')),

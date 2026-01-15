@@ -86,6 +86,7 @@ flutter:
     - assets/news_share.json
     - assets/images/google_logo.png
     - assets/images/images.png
+    - assets/images/logo.png
     
    
 
