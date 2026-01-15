@@ -1,48 +1,43 @@
-// lib/notification/notification.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import '../profile/profile_page.dart';
+import 'user_fetcher.dart';
 
+class UserItem {
+  final String id;
+  final String full_name;
+  final String avatarUrl;
+  bool isFollowing;
 
-class NotificationData {
-  final String avatar;
-  final String message;
-  final String time;
-
-  NotificationData({
-    required this.avatar,
-    required this.message,
-    required this.time,
+  UserItem({
+    required this.id,
+    required this.full_name,
+    required this.avatarUrl,
+    this.isFollowing = false,
   });
 
-  factory NotificationData.fromJson(Map<String, dynamic> json) {
-    return NotificationData(
-      avatar: json['avatar'] ?? '',
-      message: json['message'] ?? '',
-      time: json['time'] ?? '',
+  factory UserItem.fromJson(Map<String, dynamic> json) {
+    return UserItem(
+      id: (json['id'] ?? '').toString(),
+      full_name: (json['full_name'] ?? '').toString(),
+      avatarUrl: (json['avatar_url'] ?? '').toString(), // match Supabase field
+      isFollowing: json['is_following'] == true,
     );
   }
 
-  // static loader from assets/notification.json
-  static Future<List<NotificationData>> readNotifications() async {
-    final String response = await rootBundle.loadString(
-      'assets/notification.json',
-    );
-    final List<dynamic> data = jsonDecode(response);
-    return data
-        .map((e) => NotificationData.fromJson(e as Map<String, dynamic>))
-        .toList();
+  /// Fetch users via UserFetcher
+  static Future<List<UserItem>> fetchUsers() async {
+    final fetcher = UserFetcher();
+    return await fetcher.fetchUsers();
   }
 
-  /// Safe avatar widget with fallback if network image fails
+  /// Builds avatar widget with fallback and navigation to profile
   Widget buildAvatar(BuildContext context, {double size = 50}) {
-    final Widget avatarWidget = avatar.isEmpty
+    final Widget avatarWidget = avatarUrl.isEmpty
         ? _fallbackAvatar(context, size)
         : ClipRRect(
             borderRadius: BorderRadius.circular(size / 2),
             child: Image.network(
-              avatar,
+              avatarUrl,
               width: size,
               height: size,
               fit: BoxFit.cover,
@@ -72,7 +67,6 @@ class NotificationData {
         icon: const Icon(Icons.person, color: Colors.white),
         tooltip: 'View profile',
         onPressed: () {
-          // navigate to profile page
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ProfilePage()),

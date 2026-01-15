@@ -1,38 +1,85 @@
 import 'package:flutter/material.dart';
-
-
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:news_share/screens/home/home_page.dart';
 
 class SignupHandler {
-  // Controllers for all fields
-  final usernameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  final dobController = TextEditingController();
-  final genderController = TextEditingController();
+  final supabase = Supabase.instance.client;
 
-  Future<void> handleSignUpSubmit(GlobalKey<FormState> formKey) async {
+  Future<void> handleSignUpSubmit(
+    GlobalKey<FormState> formKey,
+    BuildContext context,
+  ) async {
     if (formKey.currentState!.validate()) {
-      print('\n🔥 === SIGNUP SUBMITTED ===');
-      print('👤 Username: ${usernameController.text}');
-      print('📧 Email: ${emailController.text}');
-      print('🔒 Password: ${passwordController.text}');
-      print('📅 DOB: ${dobController.text}');
-      print('⚧️ Gender: ${genderController.text}');
-      print('✅ All fields valid - Ready for API call!\n');
-      
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
-      print('📡 API call completed');
+      print('Form validation passed');
+      try {
+        print('Calling supabase.auth.signUp()...');
+
+        // Supabase signup
+        final response = await supabase.auth.signUp(
+          email: emailController.text.trim(),
+          password: passwordController.text,
+        );
+
+        print('Signup response: $response');
+        print('Response.user: ${response.user}');
+
+        final user = response.user;
+        if (user != null) {
+          print('Signup SUCCESS! User ID: ${user.id}');
+          print('User email: ${user.email}');
+
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Welcome ${user.email}!')));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+          );
+        } else {
+          print('No user returned in response');
+          _showError(context, 'Signup failed - no user returned');
+        }
+      } on AuthException catch (e) {
+        print('AuthException: ${e.message}');
+        print('AuthException code: ${e.statusCode}');
+        _showError(context, _errorMessage(e.message));
+      } catch (e) {
+        print(' Unexpected error: $e');
+        print('Error type: ${e.runtimeType}');
+        _showError(context, 'Unexpected error: $e');
+      }
     } else {
-      print('❌ Form validation failed - Fix errors');
+      print('Form validation FAILED');
     }
   }
 
+  String _errorMessage(String message) {
+    print('Raw error message: $message');
+    switch (message) {
+      case 'Invalid login credentials':
+        return 'Invalid email or password';
+      case 'User already registered':
+        return 'Email already exists. Try login.';
+      case 'Email not confirmed':
+        return 'Please check your email.';
+      case 'Password should be at least 6 characters':
+        return 'Password must be 6+ characters';
+      default:
+        return message;
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    print('📢 [DEBUG] Showing error: $message');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
   void dispose() {
-    usernameController.dispose();
     emailController.dispose();
     passwordController.dispose();
-    dobController.dispose();
-    genderController.dispose();
   }
 }

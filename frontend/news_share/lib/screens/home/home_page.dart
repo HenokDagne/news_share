@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import '../../services/news_service.dart';
-import '../../models/news_item.dart';  // ✅ Use shared model
+import '../../models/news_item.dart'; // ✅ Use shared model
 import 'top_app_bar.dart';
 import 'create_post_box.dart';
 import 'news_card.dart';
@@ -10,6 +10,7 @@ import '../post/post_page.dart';
 import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
 import 'bottom_nav.dart';
+import '../users/user_list.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,7 +32,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<List<NewsItem>> _loadNews() async {
     try {
-      return await _newsService.fetchNews();  // ✅ Direct API call
+      return await _newsService.fetchNews(); // ✅ Direct API call
     } catch (e) {
       print('💥 API failed, using local fallback: $e');
       return _loadLocalNews();
@@ -41,25 +42,36 @@ class _HomePageState extends State<HomePage> {
   Future<List<NewsItem>> _loadLocalNews() async {
     final jsonStr = await rootBundle.loadString('assets/news/share.json');
     final List<dynamic> data = json.decode(jsonStr) as List<dynamic>;
-    return data.map((e) => NewsItem.fromJson(e as Map<String, dynamic>)).toList();
+    return data
+        .map((e) => NewsItem.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   void onNavTap(int i) {
     if (i == currentIndex) return;
     switch (i) {
+      case 1: // 👈 UserListPage
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const UserListPage()),
+        );
+        break;
       case 2:
         Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => const PostPage()),
+          context,
+          MaterialPageRoute(builder: (context) => const PostPage()),
         );
         break;
       case 3:
         Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => const NotificationPage()),
+          context,
+          MaterialPageRoute(builder: (context) => const NotificationPage()),
         );
         break;
       case 4:
         Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (context) => const ProfilePage()),
+          context,
+          MaterialPageRoute(builder: (context) => const ProfilePage()),
         );
         break;
       default:
@@ -96,7 +108,8 @@ class _HomePageState extends State<HomePage> {
                           const SizedBox(height: 16),
                           Text('Error: ${snapshot.error}'),
                           ElevatedButton(
-                            onPressed: () => setState(() => newsFuture = _loadNews()),
+                            onPressed: () =>
+                                setState(() => newsFuture = _loadNews()),
                             child: const Text('Retry'),
                           ),
                         ],
@@ -109,7 +122,8 @@ class _HomePageState extends State<HomePage> {
                     child: ListView.builder(
                       padding: const EdgeInsets.only(top: 8),
                       itemCount: items.length,
-                      itemBuilder: (context, index) => NewsCard(item: items[index]),
+                      itemBuilder: (context, index) =>
+                          NewsCard(item: items[index]),
                     ),
                   );
                 },

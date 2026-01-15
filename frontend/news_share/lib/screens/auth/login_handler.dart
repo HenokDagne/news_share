@@ -1,22 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:news_share/screens/home/home_page.dart';
 
 class LoginHandler {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final supabase = Supabase.instance.client;
 
-  Future<void> handleLoginSubmit(GlobalKey<FormState> formKey) async {
+  Future<void> handleLoginSubmit(
+    GlobalKey<FormState> formKey,
+    BuildContext context, // Added for navigation/errors
+  ) async {
+    print('\n🔥 === SUPABASE LOGIN START ===');
+    print('📧 Email: ${emailController.text.trim()}');
+
     if (formKey.currentState!.validate()) {
-      print('\n🔥 === LOGIN SUBMITTED ===');
-      print('📧 Email: ${emailController.text}');
-      print('🔒 Password: ${passwordController.text}');
-      print('✅ Login data valid - Ready for API!\n');
-      
-      // Simulate API
-      await Future.delayed(const Duration(seconds: 1));
-      print('📡 Login API completed');
+      print('✅ Form validation passed');
+      try {
+        print('🚀 Calling supabase.auth.signInWithPassword()...');
+
+        final response = await supabase.auth.signInWithPassword(
+          email: emailController.text.trim(),
+          password: passwordController.text,
+        );
+
+        print('📱 Login response: $response');
+        print('👤 User: ${response.user?.id}');
+        print('🎉 [DEBUG] Login SUCCESS! User ID: ${response.user?.id}');
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Login successful!')));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      } on AuthException catch (e) {
+        print('🔴 AuthException: ${e.message}');
+        print('🔴 Status code: ${e.statusCode}');
+        _showError(context, _errorMessage(e.message));
+      } catch (e) {
+        print('💥 Unexpected error: $e');
+        _showError(context, 'Login failed: $e');
+      }
     } else {
-      print('❌ Login validation failed');
+      print('❌ Form validation FAILED');
     }
+    print('🏁 === LOGIN END ===\n');
+  }
+
+  String _errorMessage(String message) {
+    print('📝 Raw error: $message');
+    switch (message) {
+      case 'Invalid login credentials':
+        return 'Wrong email or password';
+      case 'Email not confirmed':
+        return 'Please confirm your email first';
+      case 'Too many requests':
+        return 'Too many login attempts. Try again later';
+      default:
+        return message;
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   void dispose() {

@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../home/top_app_bar.dart';
 import '../home/bottom_nav.dart';
 import '../home/home_page.dart';
@@ -6,6 +9,10 @@ import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
 import 'post_area.dart';
 import 'post_photo.dart';
+import 'publish_button.dart';
+import 'post_service.dart';
+import 'post_list_page.dart';
+import '../users/user_list.dart';
 
 class PostPage extends StatefulWidget {
   const PostPage({super.key});
@@ -15,35 +22,109 @@ class PostPage extends StatefulWidget {
 }
 
 class _PostPageState extends State<PostPage> {
-  int _currentIndex = 2; // add tab
+  int _currentIndex = 2;
+  bool _uploading = false;
 
-  void _onNavTap(int i) {
-    if (i == _currentIndex) return;
-    switch (i) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-        break;
-      case 2:
-        return; // already on add/post
-      case 3:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const NotificationPage()),
-        );
-        break;
-      case 4:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const ProfilePage()),
-        );
-        break;
-      default:
-        setState(() => _currentIndex = i); // stub for other tabs
+  final GlobalKey<PostPhotoState> postPhotoKey =
+      GlobalKey<PostPhotoState>();
+
+  final SupabaseClient supabase = Supabase.instance.client;
+  late final PostArea postArea;
+
+  String? fullName;
+  String? avatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    postArea = PostArea();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    final data = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+    setState(() {
+      fullName = data['full_name'];
+      avatarUrl = data['avatar_url'];
+    });
+  }
+
+  Future<void> _publishPost() async {
+    final title = postArea.titleController.text.trim();
+    final content = postArea.contentController.text.trim();
+    String? imageUrl;
+
+    final mediaPath =
+        postPhotoKey.currentState?.selectedMediaPath;
+
+    if (mediaPath != null) {
+      setState(() => _uploading = true);
+      imageUrl =
+          await PostService().uploadImage(File(mediaPath));
+      setState(() => _uploading = false);
+    }
+
+    if (title.isEmpty && content.isEmpty && imageUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add content or image')),
+      );
+      return;
+    }
+
+    final success = await PostService().createPost(
+      title: title.isNotEmpty ? title : null,
+      content: content.isNotEmpty ? content : null,
+      imageUrl: imageUrl,
+    );
+
+    if (success) {
+      postArea.titleController.clear();
+      postArea.contentController.clear();
+      postPhotoKey.currentState?.clearMedia();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post published')),
+      );
     }
   }
+
+  void _onNavTap(int i) {
+  if (i == _currentIndex) return;
+
+  if (i == 0) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePage()),
+    );
+  }
+  if (i == 1) { // 👈 UserListPage
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const UserListPage()),
+    );
+  }
+  if (i == 3) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationPage()),
+    );
+  }
+  if (i == 4) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfilePage()),
+    );
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -55,61 +136,30 @@ class _PostPageState extends State<PostPage> {
       ),
       body: Column(
         children: [
-          Container(
-            margin: const EdgeInsets.only(top: 4),
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 25,
-                  backgroundColor: const Color(0xFF7C3AED),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.person,
-                      color: Color.fromARGB(255, 9, 12, 110),
-                      size: 29,
+          Expanded(
+            flex: 5,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  postArea,
+                   const SizedBox(height: 12), // 👈 GAP HERE
+                  PostPhoto(key: postPhotoKey),
+
+                  if (_uploading)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ProfilePage()),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  // <- this is REQUIRED
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'John Doe',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Text(
-                        'Publish',
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                      // now gets finite width from Expanded
-                    ],
-                  ),
-                ),
-              ],
+
+                  PublishButton(onPressed: _publishPost),
+                ],
+              ),
             ),
           ),
-          SizedBox(height: 2),
-          PostArea(),
-          SizedBox(height: 4),
-          PostPhoto(),
-          SizedBox(height: 4,)
+          const Expanded(
+            flex: 5,
+            child: PostListPage(),
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavBar(

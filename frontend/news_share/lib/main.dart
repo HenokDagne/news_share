@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'screens/home/home_page.dart';
-
-void main() {
-  runApp(const NewsShareApp());
-}
+//import 'firebase_options.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class NewsShareApp extends StatelessWidget {
   const NewsShareApp({super.key});
@@ -21,4 +20,19 @@ class NewsShareApp extends StatelessWidget {
       home: const HomePage(),
     );
   }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
+  final supabaseUrl = dotenv.env['NEXT_PUBLIC_SUPABASE_URL'] ?? '';
+  final supabaseAnonKey =
+      dotenv.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY'] ?? '';
+  if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
+    throw Exception(
+      'Supabase URL or Anon Key not found in .env file. Please add them for the app to work securely.',
+    );
+  }
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  runApp(const NewsShareApp());
 }

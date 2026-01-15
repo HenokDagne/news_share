@@ -6,6 +6,7 @@ import '../home/home_page.dart';
 import '../post/post_page.dart';
 import '../profile/profile_page.dart';
 import 'notification.dart';
+import '../users/user_list.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -25,33 +26,39 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   void _onNavTap(int i) {
-    debugPrint('BottomNav tapped: $i (current=$_currentIndex)');
-    if (i == _currentIndex) return;
-    switch (i) {
-      case 0:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-        break;
-      case 2:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const PostPage()),
-        );
-        break;
-      case 3:
-        return; // already here
-      case 4:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const ProfilePage()),
-        );
-        break;
-      default:
-        setState(() => _currentIndex = i); // stub for other tabs
-    }
+  if (i == _currentIndex) return;
+  switch (i) {
+    case 0:
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+      break;
+    case 1: // 👈 New index for UserListPage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const UserListPage()),
+      );
+      break;
+    case 2:
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const PostPage()),
+      );
+      break;
+    case 3:
+      return; // already here (NotificationPage)
+    case 4:
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfilePage()),
+      );
+      break;
+    default:
+      setState(() => _currentIndex = i);
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 class InputBox extends StatelessWidget {
-  final TextEditingController usernameController;
+  
   final TextEditingController emailController;
   final TextEditingController passwordController;
 
   const InputBox({
     super.key,
-    required this.usernameController,
+    
     required this.emailController,
     required this.passwordController,
   });
@@ -39,14 +39,7 @@ class InputBox extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('username', style: _labelStyle),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: usernameController,
-          decoration: _fieldDecoration('username'),
-          validator: (v) => v?.isEmpty != false || v!.length < 3 ? 'Min 3 chars' : null,
-        ),
-        const SizedBox(height: 18),
+       
         Text('Email', style: _labelStyle),
         const SizedBox(height: 6),
         TextFormField(

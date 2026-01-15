@@ -1,20 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
-import '../auth/signup.dart';
 import '../auth/login.dart';
+import '../auth/logout.dart';
 
-class TopAppBar extends StatelessWidget {
+class TopAppBar extends StatefulWidget {
   const TopAppBar({super.key});
 
   @override
+  State<TopAppBar> createState() => _TopAppBarState();
+}
+
+class _TopAppBarState extends State<TopAppBar> {
+  String? avatarUrl;
+
+  final SupabaseClient supabase = Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAvatar();
+  }
+
+  Future<void> _fetchAvatar() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final data = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .single();
+
+      setState(() {
+        avatarUrl = data['avatar_url'];
+      });
+    } catch (e) {
+      debugPrint('Avatar fetch error: $e');
+    }
+  }
+
+  // ---------------- LOGOUT FUNCTION ----------------
+  Future<void> _logout() async {
+    try {
+      await supabase.auth.signOut();
+      setState(() {
+        avatarUrl = null;
+      });
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+    } catch (e) {
+      debugPrint('Logout error: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final user = supabase.auth.currentUser;
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SafeArea(
         bottom: false,
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
               'NewsShare',
@@ -24,109 +79,105 @@ class TopAppBar extends StatelessWidget {
                 color: Color(0xFF2563EB),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                height: 40,
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.search, size: 18, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search...',
-                          hintStyle: TextStyle(color: Colors.grey),
-                          border: InputBorder.none,
+
+            Row(
+              children: [
+                // Notifications
+                if (user != null)
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const NotificationPage(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.notifications_none),
+                      ),
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Text(
+                            '5',
+                            style: TextStyle(color: Colors.white, fontSize: 10),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationPage(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(
-                    Icons.notifications_none,
-                    color: Colors.black,
+                    ],
                   ),
-                ),
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
+
+                const SizedBox(width: 8),
+
+                // Profile avatar (only if logged in)
+                if (user != null)
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProfilePage()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Color.fromARGB(255, 237, 58, 207),
+                        shape: BoxShape.circle,
+                      ),
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundColor: const Color(0xFF7C3AED),
+                        backgroundImage:
+                            avatarUrl != null && avatarUrl!.isNotEmpty
+                            ? NetworkImage(avatarUrl!)
+                            : null,
+                        child: avatarUrl == null
+                            ? const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 20,
+                              )
+                            : null,
+                      ),
                     ),
-                    child: const Text(
-                      '5',
-                      style: TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+
+                const SizedBox(width: 8),
+
+                // LOGIN / LOGOUT BUTTON
+                GestureDetector(
+                  onTap: () {
+                    if (user != null) {
+                      // Logged in → logout
+                      _logout();
+                    } else {
+                      // Not logged in → navigate to login page
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginPage()),
+                      );
+                    }
+                  },
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.transparent,
+                    child: Icon(
+                      user != null ? Icons.logout : Icons.login,
+                      color: user != null ? Colors.red : Colors.black,
+                      size: 20,
                     ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfilePage()),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 237, 58, 207),
-                  shape: BoxShape.circle,
-                ),
-                child: const CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Color(0xFF7C3AED),
-                  child: Icon(Icons.person, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(2),
-
-                child: const CircleAvatar(
-                  radius: 20,
-
-                  child: Icon(Icons.login, color: Colors.black, size: 20),
-                ),
-              ),
             ),
           ],
         ),

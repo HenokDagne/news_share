@@ -1,13 +1,167 @@
 import 'package:flutter/material.dart';
-import '../../models/news_item.dart';  // ✅ Use shared model
+import '../../models/news_item.dart';
 
-class NewsCard extends StatelessWidget {
-  const NewsCard({super.key, required this.item});
+class NewsCard extends StatefulWidget {
+  final NewsItem? item;
+  final bool isLoading;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
-  final NewsItem item;  // ✅ Your shared model
+  const NewsCard({
+    super.key,
+    this.item,
+    this.isLoading = false,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  @override
+  State<NewsCard> createState() => _NewsCardState();
+}
+
+class _NewsCardState extends State<NewsCard> {
+  bool _isExpanded = false;
+
+  // ----------------- HELPER: Convert title/subtitle to string -----------------
+ String _extractText(dynamic field) {
+  if (field == null) return '';
+  // If field is a Map
+  if (field is Map<String, dynamic>) {
+    final name = field['name'] ?? '';
+    return name; // ✅ only name
+  }
+  // If field is a class/object with .name
+  try {
+    final name = field.name ?? '';
+    return name;
+  } catch (_) {}
+  // Otherwise, treat as string
+  return field.toString();
+}
+
+
+  // ----------------- SKELETON -----------------
+  Widget _skeleton({double height = 14, double width = double.infinity}) {
+    return Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(6),
+      ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _skeleton(height: 44, width: 44),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _skeleton(width: 120),
+                        const SizedBox(height: 6),
+                        _skeleton(width: 80),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  _skeleton(width: 24, height: 24),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _skeleton(width: double.infinity, height: 20),
+              const SizedBox(height: 6),
+              _skeleton(width: double.infinity, height: 16),
+              const SizedBox(height: 6),
+              _skeleton(width: 100, height: 16),
+              const SizedBox(height: 12),
+              Container(height: 180, color: Colors.grey.shade300),
+              const SizedBox(height: 12),
+              _skeleton(width: double.infinity, height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ----------------- DESCRIPTION WITH SEE MORE -----------------
+  Widget _buildDescription(String text) {
+    final shouldShowExpand = text.length > 100;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _isExpanded ? text : (text.substring(0, shouldShowExpand ? 100 : text.length) + (shouldShowExpand ? '...' : '')),
+          style: const TextStyle(color: Colors.grey),
+        ),
+        if (shouldShowExpand)
+          GestureDetector(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                _isExpanded ? 'See less' : 'See more',
+                style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ----------------- IMAGE -----------------
+  Widget _buildImage(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      return Container(
+        height: 180,
+        color: Colors.grey[300],
+        child: const Center(
+          child: Icon(Icons.image, size: 60, color: Colors.white),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        height: 180,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) => Container(
+          height: 180,
+          color: Colors.grey[300],
+          child: const Center(
+            child: Icon(Icons.broken_image, size: 60, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isLoading) return _buildSkeleton();
+
+    final item = widget.item!;
+    final titleText = _extractText(item.title);
+    final subtitleText = _extractText(item.subtitle);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       child: Card(
@@ -17,7 +171,7 @@ class NewsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // HEADER
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: Row(
@@ -31,12 +185,19 @@ class NewsCard extends StatelessWidget {
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [Color(0xFFF58529), Color(0xFFDD2A7B), Color(0xFF8134AF), Color(0xFF515BD4)],
+                        colors: [
+                          Color(0xFFF58529),
+                          Color(0xFFDD2A7B),
+                          Color(0xFF8134AF),
+                          Color(0xFF515BD4)
+                        ],
                       ),
                     ),
                     child: Container(
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-                      child: const Icon(Icons.account_circle, color: Color(0xFF7C3AED), size: 40),
+                      decoration:
+                          const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                      child: const Icon(Icons.account_circle,
+                          color: Color(0xFF7C3AED), size: 40),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -48,27 +209,43 @@ class NewsCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Text(item.timeAgo, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                            Text(item.timeAgo,
+                                style: const TextStyle(color: Colors.grey, fontSize: 12)),
                             const SizedBox(width: 6),
-                            const Icon(Icons.public, size: 12, color: Colors.blueAccent),
+                            const Icon(Icons.public,
+                                size: 12, color: Colors.blueAccent),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.more_horiz, color: Colors.grey),
+                  // ----------------- 3 DOT MENU -----------------
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_horiz, color: Colors.grey),
+                    onSelected: (value) {
+                      if (value == 'edit') widget.onEdit?.call();
+                      if (value == 'delete') widget.onDelete?.call();
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Delete', style: TextStyle(color: Colors.red))),
+                    ],
+                  ),
                 ],
               ),
             ),
-            // Content
+            // CONTENT
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(titleText,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  Text(item.subtitle, style: const TextStyle(color: Colors.grey)),
+                  _buildDescription(subtitleText),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -76,31 +253,21 @@ class NewsCard extends StatelessWidget {
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(item.category, style: const TextStyle(color: Color(0xFF2563EB), fontSize: 12)),
+                    child: Text(item.category,
+                        style:
+                            const TextStyle(color: Color(0xFF2563EB), fontSize: 12)),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
-            // Image placeholder
+            // IMAGE
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: (item.imageUrl.isNotEmpty
-                    ? Image.network(item.imageUrl, fit: BoxFit.cover)
-                    : Container(
-                    
-                        height: 180,
-                        color: Colors.grey[300],
-                        child: const Center(
-                          child: Icon(Icons.image, size: 60, color: Colors.white),
-                        ),
-                      )),
-              ),
+              child: _buildImage(item.imageUrl),
             ),
-            // Actions
             const SizedBox(height: 12),
+            // ACTIONS
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Row(
@@ -110,14 +277,12 @@ class NewsCard extends StatelessWidget {
                     child: Wrap(
                       spacing: 8,
                       crossAxisAlignment: WrapCrossAlignment.center,
-                      
-                      children: [
-                        const SizedBox(width: 8),
-                        const Icon(Icons.favorite_border, color: Colors.pink),
+                      children: const [
+                        Icon(Icons.favorite_border, color: Colors.pink),
                         Text('420'),
-                        const Icon(Icons.mode_comment_outlined, color: Colors.grey),
+                        Icon(Icons.mode_comment_outlined, color: Colors.grey),
                         Text('120'),
-                        const Icon(Icons.share, color: Colors.grey),
+                        Icon(Icons.share, color: Colors.grey),
                         Text('80 '),
                       ],
                     ),
@@ -141,3 +306,4 @@ class NewsCard extends StatelessWidget {
     );
   }
 }
+

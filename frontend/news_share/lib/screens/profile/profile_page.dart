@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../home/top_app_bar.dart';
 import '../home/bottom_nav.dart';
 import '../home/home_page.dart';
 import '../post/post_page.dart';
 import '../notification/notification_page.dart';
-import 'statItem.dart';
-import 'profileItem.dart';
+import 'profile_edit_screen.dart';
+import '../users/user_list.dart';
+import 'follow_stats_box.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -15,15 +17,52 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  int _currentIndex = 4;
+  final supabase = Supabase.instance.client;
 
-  void _onNavTap(int i) {
-    if (i == _currentIndex) return;
-    switch (i) {
+  int _currentIndex = 4;
+  bool _isLoading = true;
+  Map<String, dynamic>? _profile;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+      final data = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .single();
+      setState(() {
+        _profile = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Profile load error: $e')));
+    }
+  }
+
+  void _onNavTap(int index) {
+    if (index == _currentIndex) return;
+
+    switch (index) {
       case 0:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+        break;
+      case 1:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const UserListPage()),
         );
         break;
       case 2:
@@ -38,122 +77,144 @@ class _ProfilePageState extends State<ProfilePage> {
           MaterialPageRoute(builder: (_) => const NotificationPage()),
         );
         break;
-      case 4:
-        return; // already here
       default:
-        setState(() => _currentIndex = i);
+        setState(() => _currentIndex = index);
     }
   }
 
+  void _editProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfileEditScreen()),
+    ).then((_) => _loadProfile());
+  }
+
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: Colors.white,
-    appBar: const PreferredSize(
-      preferredSize: Size.fromHeight(70),
-      child: TopAppBar(),
-    ),
-    body: LayoutBuilder(
-      builder: (context, constraints) {
-        final double maxBodyHeight = constraints.maxHeight; // full screen height
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-        // height from top of screen down to where profile content starts
-        const double profileTop = 140;
-        final double availableForProfile = maxBodyHeight - profileTop;
+    if (_profile == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.person_off, size: 64),
+              const SizedBox(height: 16),
+              const Text('Profile not found'),
+              ElevatedButton(
+                onPressed: _loadProfile,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-        return Stack(
-          clipBehavior: Clip.none,
+    final profile = _profile!;
+
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: const PreferredSize(
+        preferredSize: Size.fromHeight(70),
+        child: TopAppBar(),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
           children: [
+            // Cover gradient
             Container(
-              height: 200,
+              height: 180,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
+                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
                 ),
               ),
             ),
-            Positioned(
-              left: 16,
-              right: 16,
-              top: profileTop,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  // force the whole Column (including Profileitem) to fit
-                  maxHeight: availableForProfile,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // avatar, texts, stats...
-                    Container(
-                      width: 120,
-                      height: 120,
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
+            // Avatar, name, and bio
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                // This empty container just pushes content down
+                Container(height: 0),
+                Positioned(
+                  top: -60,
+                  child: Container(
+                    padding: const EdgeInsets.all(5), // thickness of the ring
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF833AB4), // purple
+                          Color(0xFFF77737), // orange
+                          Color(0xFFE1306C), // pink
+                          Color(0xFFFD1D1D), // red
+                          Color(0xFFFCB045), // yellow
                         ],
-                      ),
-                      child: const CircleAvatar(
-                        backgroundColor: Color(0xFF6C6CD1),
-                        child: Icon(
-                          Icons.person,
-                          color: Color(0xFF4D4DB0),
-                          size: 64,
-                        ),
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'John Doe',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'Arial',
-                      ),
+                    child: CircleAvatar(
+                      radius: 60,
+                      backgroundImage: profile['avatar_url']?.isNotEmpty == true
+                          ? NetworkImage(profile['avatar_url'])
+                          : null,
+                      child: profile['avatar_url']?.isNotEmpty != true
+                          ? const Icon(Icons.person, size: 60)
+                          : null,
+                      backgroundColor: Colors.white,
                     ),
-                    const SizedBox(height: 4),
-                    const Text('john@example.com'),
-                    const SizedBox(height: 6),
-                    const Text('News enthusiast | Tech lover'),
-                    const SizedBox(height: 12),
-                    const Divider(thickness: 1, color: Color(0xFFECECEC)),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Expanded(child: StatItem(value: '156', label: 'Posts')),
-                        Expanded(child: StatItem(value: '2.4K', label: 'Followers')),
-                        Expanded(child: StatItem(value: '892', label: 'Following')),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Let Profileitem use remaining space but not overflow
-                    const Expanded(
-                      child: Profileitem(),
-                    ),
-                  ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 70),
+            Text(
+              profile['full_name'] ?? 'User',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              profile['bio'] ?? '',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            // Followers / Following stats
+            FollowStatsBox(userId: supabase.auth.currentUser!.id),
+            const SizedBox(height: 16),
+            // Edit profile button
+            ElevatedButton(
+              onPressed: _editProfile,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
+              child: const Text('Edit Profile', style: TextStyle(fontSize: 16)),
             ),
+            const SizedBox(height: 24),
+            // Future sections: posts, friends, photos
           ],
-        );
-      },
-    ),
-    bottomNavigationBar: BottomNavBar(
-      currentIndex: _currentIndex,
-      onChanged: _onNavTap,
-    ),
-  );
-}
-
+        ),
+      ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: _currentIndex,
+        onChanged: _onNavTap,
+      ),
+    );
+  }
 }

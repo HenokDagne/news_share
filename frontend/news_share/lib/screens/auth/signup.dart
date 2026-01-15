@@ -31,16 +31,14 @@ class _SignUpPageState extends State<SignUpPage> {
                 const TopBar(),
                 const SizedBox(height: 24),
                 InputBox(
-                  usernameController: _handler.usernameController,
+                 
                   emailController: _handler.emailController,
                   passwordController: _handler.passwordController,
                 ),
                 const SizedBox(height: 24),
                 InputButton(
-                  formKey: _formKey,
-                  dobController: _handler.dobController,
-                  genderController: _handler.genderController,
-                  onSubmit: () => _handler.handleSignUpSubmit(_formKey),
+                  formKey: _formKey,  // 👈 Pass the formKey
+                  onSubmit: () => _handler.handleSignUpSubmit(_formKey, context),
                 ),
                 const SizedBox(height: 16),
                 const Footer(),
