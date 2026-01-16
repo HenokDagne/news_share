@@ -48,7 +48,7 @@ class BottomNavBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildItem(context, icon: Icons.home, index: 0),
-            _buildItem(context, icon: Icons.search, index: 1),
+            _buildItem(context, icon: Icons.group, index: 1),
 
             // ➕ Center button
             GestureDetector(

@@ -49,6 +49,8 @@ dependencies:
   dotenv: ^4.2.0
   flutter_dotenv: ^6.0.0
   crypto: ^3.0.7
+  share_plus: ^7.2.1
+  flutter_launcher_icons: ^0.14.4
   
   
 
@@ -70,6 +72,10 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
 flutter:
 
   # The following line ensures that the Material Icons font is

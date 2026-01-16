@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class LoginInput extends StatelessWidget {
+class LoginInput extends StatefulWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;
 
@@ -10,12 +10,23 @@ class LoginInput extends StatelessWidget {
     required this.passwordController,
   });
 
-  InputDecoration _fieldDecoration(String hint) => InputDecoration(
+  @override
+  State<LoginInput> createState() => _LoginInputState();
+}
+
+class _LoginInputState extends State<LoginInput> {
+  bool _obscurePassword = true;
+
+  InputDecoration _fieldDecoration(String hint, {Widget? suffixIcon}) =>
+      InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFFB3B3B3)),
         filled: true,
         fillColor: Colors.grey[50],
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -28,6 +39,7 @@ class LoginInput extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFF0095F6), width: 2),
         ),
+        suffixIcon: suffixIcon,
       );
 
   @override
@@ -36,17 +48,32 @@ class LoginInput extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: emailController,
+          controller: widget.emailController,
           keyboardType: TextInputType.emailAddress,
           decoration: _fieldDecoration('Email or phone'),
-          validator: (v) => v?.isEmpty ?? true || !v!.contains('@') ? 'Enter valid email' : null,
+          validator: (v) => v?.isEmpty ?? true || !v!.contains('@')
+              ? 'Enter valid email'
+              : null,
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: passwordController,
-          obscureText: true,
-          decoration: _fieldDecoration('Password'),
-          validator: (v) => v?.isEmpty ?? true || v!.length < 6 ? 'Password too short' : null,
+          controller: widget.passwordController,
+          obscureText: _obscurePassword,
+          decoration: _fieldDecoration(
+            'Password',
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscurePassword = !_obscurePassword;
+                });
+              },
+            ),
+          ),
+          validator: (v) =>
+              v?.isEmpty ?? true || v!.length < 6 ? 'Password too short' : null,
         ),
       ],
     );

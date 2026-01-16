@@ -1,9 +1,9 @@
 // lib/notification/notification.dart
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import '../profile/profile_page.dart';
 
+import 'package:flutter/material.dart';
+import '../profile/profile_page.dart';
+import 'push_notification.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotificationData {
   final String avatar;
@@ -18,21 +18,17 @@ class NotificationData {
 
   factory NotificationData.fromJson(Map<String, dynamic> json) {
     return NotificationData(
-      avatar: json['avatar'] ?? '',
+      avatar: json['actor_avatar_url'] ?? '',
       message: json['message'] ?? '',
-      time: json['time'] ?? '',
+      time: json['created_at']?.toString() ?? '',
     );
   }
 
-  // static loader from assets/notification.json
   static Future<List<NotificationData>> readNotifications() async {
-    final String response = await rootBundle.loadString(
-      'assets/notification.json',
-    );
-    final List<dynamic> data = jsonDecode(response);
-    return data
-        .map((e) => NotificationData.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return [];
+    final data = await PushNotificationService.fetchUserNotifications(userId);
+    return data.map((e) => NotificationData.fromJson(e)).toList();
   }
 
   /// Safe avatar widget with fallback if network image fails

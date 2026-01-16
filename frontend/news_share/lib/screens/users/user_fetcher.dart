@@ -5,19 +5,22 @@ import 'user_model.dart';
 class UserFetcher {
   final SupabaseClient supabase = Supabase.instance.client;
 
-  /// Fetch all users from the 'profiles' table
+  /// Fetch all users from the 'profiles' table except the current logged-in user
   Future<List<UserItem>> fetchUsers() async {
     try {
-      final data = await supabase
-          .from('profiles')
-          .select()
-          .order('full_name'); // optional
+      // Get current user ID
+      final currentUser = supabase.auth.currentUser;
+      final currentUserId = currentUser?.id;
+
+      final data = await supabase.from('profiles').select().order('full_name');
 
       if (data == null) return [];
 
+      // Exclude current user from the list
       return (data as List)
           .whereType<Map<String, dynamic>>()
           .map((e) => UserItem.fromJson(e))
+          .where((user) => user.id != currentUserId)
           .toList();
     } catch (e) {
       debugPrint('Error fetching users: $e');

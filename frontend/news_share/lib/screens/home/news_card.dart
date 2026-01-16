@@ -1,5 +1,7 @@
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import '../../models/news_item.dart';
+import 'package:share_plus/share_plus.dart';
 
 class NewsCard extends StatefulWidget {
   final NewsItem? item;
@@ -20,25 +22,44 @@ class NewsCard extends StatefulWidget {
 }
 
 class _NewsCardState extends State<NewsCard> {
+  void _shareDirect(BuildContext context, String shareText) async {
+    await _shareGeneric(shareText);
+  }
+
+  Widget _shareItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.blue),
+      title: Text(label),
+      onTap: onTap,
+    );
+  }
+
+  Future<void> _shareGeneric(String text) async {
+    await Share.share(text);
+  }
+
   bool _isExpanded = false;
 
   // ----------------- HELPER: Convert title/subtitle to string -----------------
- String _extractText(dynamic field) {
-  if (field == null) return '';
-  // If field is a Map
-  if (field is Map<String, dynamic>) {
-    final name = field['name'] ?? '';
-    return name; // ✅ only name
+  String _extractText(dynamic field) {
+    if (field == null) return '';
+    // If field is a Map
+    if (field is Map<String, dynamic>) {
+      final name = field['name'] ?? '';
+      return name; // ✅ only name
+    }
+    // If field is a class/object with .name
+    try {
+      final name = field.name ?? '';
+      return name;
+    } catch (_) {}
+    // Otherwise, treat as string
+    return field.toString();
   }
-  // If field is a class/object with .name
-  try {
-    final name = field.name ?? '';
-    return name;
-  } catch (_) {}
-  // Otherwise, treat as string
-  return field.toString();
-}
-
 
   // ----------------- SKELETON -----------------
   Widget _skeleton({double height = 14, double width = double.infinity}) {
@@ -106,7 +127,10 @@ class _NewsCardState extends State<NewsCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _isExpanded ? text : (text.substring(0, shouldShowExpand ? 100 : text.length) + (shouldShowExpand ? '...' : '')),
+          _isExpanded
+              ? text
+              : (text.substring(0, shouldShowExpand ? 100 : text.length) +
+                    (shouldShowExpand ? '...' : '')),
           style: const TextStyle(color: Colors.grey),
         ),
         if (shouldShowExpand)
@@ -116,7 +140,10 @@ class _NewsCardState extends State<NewsCard> {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 _isExpanded ? 'See less' : 'See more',
-                style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  color: Colors.blue,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
@@ -189,15 +216,20 @@ class _NewsCardState extends State<NewsCard> {
                           Color(0xFFF58529),
                           Color(0xFFDD2A7B),
                           Color(0xFF8134AF),
-                          Color(0xFF515BD4)
+                          Color(0xFF515BD4),
                         ],
                       ),
                     ),
                     child: Container(
-                      decoration:
-                          const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-                      child: const Icon(Icons.account_circle,
-                          color: Color(0xFF7C3AED), size: 40),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                      child: const Icon(
+                        Icons.account_circle,
+                        color: Color(0xFF7C3AED),
+                        size: 40,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -205,33 +237,43 @@ class _NewsCardState extends State<NewsCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.source, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          item.source,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Text(item.timeAgo,
-                                style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                            Text(
+                              item.timeAgo,
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
                             const SizedBox(width: 6),
-                            const Icon(Icons.public,
-                                size: 12, color: Colors.blueAccent),
+                            const Icon(
+                              Icons.public,
+                              size: 12,
+                              color: Colors.blueAccent,
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  // ----------------- 3 DOT MENU -----------------
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_horiz, color: Colors.grey),
-                    onSelected: (value) {
-                      if (value == 'edit') widget.onEdit?.call();
-                      if (value == 'delete') widget.onDelete?.call();
+                  // ----------------- 3 DOT MENU (Overflow) -----------------
+                  IconButton(
+                    icon: const Icon(Icons.share, color: Color(0xFF2563EB)),
+                    tooltip: 'Share',
+                    onPressed: () {
+                      final item = widget.item;
+                      if (item != null) {
+                        final shareText =
+                            '${item.title}\n${item.subtitle}\n${item.imageUrl ?? ''}';
+                        _shareDirect(context, shareText.trim());
+                      }
                     },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete', style: TextStyle(color: Colors.red))),
-                    ],
                   ),
                 ],
               ),
@@ -242,20 +284,32 @@ class _NewsCardState extends State<NewsCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(titleText,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    titleText,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   _buildDescription(subtitleText),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(item.category,
-                        style:
-                            const TextStyle(color: Color(0xFF2563EB), fontSize: 12)),
+                    child: Text(
+                      item.category,
+                      style: const TextStyle(
+                        color: Color(0xFF2563EB),
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -306,4 +360,3 @@ class _NewsCardState extends State<NewsCard> {
     );
   }
 }
-

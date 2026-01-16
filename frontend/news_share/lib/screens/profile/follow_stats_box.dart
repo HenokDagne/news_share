@@ -13,19 +13,21 @@ class FollowStatsBox extends StatefulWidget {
 }
 
 class _FollowStatsBoxState extends State<FollowStatsBox> {
-  late Future<UserFollowData?> _future;
   final _fetcher = UserFollowFetcher();
 
   @override
-  void initState() {
-    super.initState();
-    _future = _fetcher.fetchFollowStats(widget.userId);
+  void didUpdateWidget(covariant FollowStatsBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      setState(() {}); // Triggers rebuild and refetch
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<UserFollowData?>(
-      future: _future,
+      // Always fetch fresh data on build for up-to-date stats
+      future: _fetcher.fetchFollowStats(widget.userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const FollowStatsSkeleton();

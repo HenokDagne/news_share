@@ -44,14 +44,17 @@ class _SplashScreenState extends State<SplashScreen> {
                 width: 100,
                 height: 100,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF2563EB), // Facebook blue
+                  color: Colors.transparent, // Facebook blue
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    width: 60,
-                    height: 60,
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
