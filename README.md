@@ -13,6 +13,10 @@
 
 **NewsShare** is a full-featured news aggregation and social platform. Users can browse, search, and share news from top sources, follow other users, and receive real-time notifications. The app is designed for security, scalability, and a seamless user experience across mobile, web, and desktop.
 
+## Project SRS
+
+- Detailed Software Requirements Specification (SRS): [Google Doc](https://docs.google.com/document/d/12qh8hS6bCbr1lodMh8fbr4hANuIuXpUY/edit?usp=sharing&ouid=108335093438878048436&rtpof=true&sd=true)
+
 ### Why Supabase?
 
 - **Authentication**: Secure user sign-up, login, and social auth (Google) using Supabase Auth.

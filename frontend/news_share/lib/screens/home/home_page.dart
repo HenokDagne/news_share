@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/news_service.dart';
 import '../../models/news_item.dart'; // ✅ Use shared model
 import 'top_app_bar.dart';
@@ -15,6 +16,7 @@ import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
 import 'bottom_nav.dart';
 import '../users/user_list.dart';
+import '../auth/login.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,30 +27,62 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final NewsService _newsService = NewsService();
+  final TextEditingController _searchController = TextEditingController();
   late Future<List<NewsItem>> newsFuture;
   int currentIndex = 0;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      newsFuture = Future.value(<NewsItem>[]);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      });
+      return;
+    }
+
     newsFuture = _loadNews();
   }
 
-  Future<List<NewsItem>> _loadNews() async {
+  Future<List<NewsItem>> _loadNews({String query = ''}) async {
     try {
-      return await _newsService.fetchNews(); // ✅ Direct API call
+      return await _newsService.fetchNews(
+        query: query,
+      ); // ✅ Direct API call with filter
     } catch (e) {
       print('💥 API failed, using local fallback: $e');
-      return _loadLocalNews();
+      return _loadLocalNews(query: query);
     }
   }
 
-  Future<List<NewsItem>> _loadLocalNews() async {
+  Future<List<NewsItem>> _loadLocalNews({String query = ''}) async {
     final jsonStr = await rootBundle.loadString('assets/news/share.json');
     final List<dynamic> data = json.decode(jsonStr) as List<dynamic>;
-    return data
+    final items = data
         .map((e) => NewsItem.fromJson(e as Map<String, dynamic>))
         .toList();
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return items;
+    return items.where((item) => _matchesQuery(item, q)).toList();
+  }
+
+  bool _matchesQuery(NewsItem item, String q) {
+    return item.title.toLowerCase().contains(q) ||
+        item.subtitle.toLowerCase().contains(q) ||
+        item.source.toLowerCase().contains(q);
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() {
+      _searchQuery = value;
+      newsFuture = _loadNews(query: _searchQuery);
+    });
   }
 
   void onNavTap(int i) {
@@ -84,6 +118,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
@@ -95,7 +135,11 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const CreatePostBox(),
+            CreatePostBox(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              hintText: 'Search news or topics...',
+            ),
             Expanded(
               child: FutureBuilder<List<NewsItem>>(
                 future: newsFuture,
@@ -112,8 +156,9 @@ class _HomePageState extends State<HomePage> {
                           const SizedBox(height: 16),
                           Text('Error: ${snapshot.error}'),
                           ElevatedButton(
-                            onPressed: () =>
-                                setState(() => newsFuture = _loadNews()),
+                            onPressed: () => setState(
+                              () => newsFuture = _loadNews(query: _searchQuery),
+                            ),
                             child: const Text('Retry'),
                           ),
                         ],
@@ -122,7 +167,9 @@ class _HomePageState extends State<HomePage> {
                   }
                   final items = snapshot.data ?? [];
                   return RefreshIndicator(
-                    onRefresh: () => Future.value(newsFuture = _loadNews()),
+                    onRefresh: () => Future.value(
+                      newsFuture = _loadNews(query: _searchQuery),
+                    ),
                     child: ListView.builder(
                       padding: const EdgeInsets.only(top: 8),
                       itemCount: items.length,
