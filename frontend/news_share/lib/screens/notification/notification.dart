@@ -1,5 +1,8 @@
 // lib/notification/notification.dart
-
+/*
+  Defines NotificationData model, loads notifications for the current user,
+  builds safe avatar widgets with fallbacks, and links to the Profile page.
+*/
 import 'package:flutter/material.dart';
 import '../profile/profile_page.dart';
 import 'push_notification.dart';

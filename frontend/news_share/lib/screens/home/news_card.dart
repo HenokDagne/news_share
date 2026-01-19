@@ -1,3 +1,8 @@
+/*
+  Stateless card widget that renders a NewsItem with image, title, description,
+  source info, and supports tap handling for navigation or external links.
+*/
+
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import '../../models/news_item.dart';

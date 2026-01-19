@@ -1,3 +1,8 @@
+/*
+  Defines UserItem model, builds avatars with fallback + profile navigation,
+  and exposes a helper to fetch users via UserFetcher.
+*/
+
 import 'package:flutter/material.dart';
 import '../profile/profile_page.dart';
 import 'user_fetcher.dart';

@@ -1,3 +1,10 @@
+// ...existing code...
+/*
+  Handles Supabase email/password login, validates the form, shows SnackBars, routes to Home on success,
+  and surfaces friendly error messages for common auth failures.
+*/
+// ...existing code...
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:news_share/screens/home/home_page.dart';

@@ -1,3 +1,5 @@
+// Handles Supabase email/password signup, surfaces tailored error messages, shows SnackBars, and routes to Home on success.
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:news_share/screens/home/home_page.dart';
@@ -72,7 +74,7 @@ class SignupHandler {
   }
 
   void _showError(BuildContext context, String message) {
-    print('📢 [DEBUG] Showing error: $message');
+    print('Showing error: $message');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );

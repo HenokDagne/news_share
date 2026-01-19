@@ -1,3 +1,9 @@
+/*
+  Handles Supabase email/password signup, validates the form, shows SnackBars,
+  surfaces friendly error messages, and routes to Home on success.
+*/
+
+
 import 'package:flutter/material.dart';
 import 'widgets/top_bar.dart';
 import 'widgets/inputbox.dart';

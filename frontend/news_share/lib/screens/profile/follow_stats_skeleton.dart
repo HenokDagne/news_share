@@ -1,3 +1,8 @@
+/*
+  Skeleton widget for follower/following stats, showing shimmer placeholders
+  while follow counts or user profile data load.
+*/
+
 import 'package:flutter/material.dart';
 
 class FollowStatsSkeleton extends StatelessWidget {

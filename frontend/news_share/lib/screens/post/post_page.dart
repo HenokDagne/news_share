@@ -1,3 +1,11 @@
+// ...existing code...
+/*
+  Renders the post screen: lets users enter title/content, pick/upload an image,
+  publish via PostService, shows publish feedback, and displays the post feed.
+  Also handles bottom navigation to Home, Users, Notifications, and Profile.
+*/
+// ...existing code...
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

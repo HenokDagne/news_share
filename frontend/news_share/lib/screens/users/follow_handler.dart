@@ -1,7 +1,10 @@
 // lib/user/follow_handler.dart
+/*
+  Handles Supabase follow/unfollow operations via RPC calls,
+  checks follow status, and can fetch follower/following counts.
+*/
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Handles following/unfollowing users and checking follow status
 class FollowHandler {
   final SupabaseClient supabase = Supabase.instance.client;
 
@@ -15,8 +18,8 @@ class FollowHandler {
       // Optional: print success
       print('Followed user $targetUserId successfully.');
     } catch (e, stack) {
-      print('❌ Follow error: $e');
-      print('📌 Stack trace: $stack');
+      print('Follow error: $e');
+      print('Stack trace: $stack');
     }
   }
 
@@ -30,8 +33,8 @@ class FollowHandler {
       // Optional: print success
       print('Unfollowed user $targetUserId successfully.');
     } catch (e, stack) {
-      print('❌ Unfollow error: $e');
-      print('📌 Stack trace: $stack');
+      print('Unfollow error: $e');
+      print('Stack trace: $stack');
     }
   }
 
@@ -49,8 +52,8 @@ class FollowHandler {
 
       return data != null;
     } catch (e, stack) {
-      print('❌ isFollowing error: $e');
-      print('📌 Stack trace: $stack');
+      print('isFollowing error: $e');
+      print('Stack trace: $stack');
       return false;
     }
   }
@@ -73,8 +76,8 @@ class FollowHandler {
 
     
     } catch (e, stack) {
-      print('❌ fetchFollowCounts error: $e');
-      print('📌 Stack trace: $stack');
+      print('fetchFollowCounts error: $e');
+      print('Stack trace: $stack');
       return {'followers_count': 0, 'following_count': 0};
     }
   }

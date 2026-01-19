@@ -1,3 +1,7 @@
+/*
+  Renders the create-post input box, handles focus and submit actions,
+  and delegates post creation via the provided callbacks/controllers.
+*/
 import 'package:flutter/material.dart';
 
 class CreatePostBox extends StatelessWidget {

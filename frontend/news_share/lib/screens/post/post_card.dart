@@ -1,3 +1,8 @@
+/*
+  Renders a post card with title, content (expand/collapse), image (network/file/placeholder),
+  optional edit/delete actions, loading skeleton, and created-at display.
+*/
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'delete_post.dart';

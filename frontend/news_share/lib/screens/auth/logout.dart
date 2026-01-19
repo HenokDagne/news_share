@@ -1,5 +1,6 @@
 // lib/handlers/logout_handler.dart
-// 👈 LOGOUT ONLY - No login functionality
+// LOGOUT ONLY - No login functionality
+// Handles sign-out for Supabase and Google, shows a success/failure SnackBar, and guards UI ops with context.mounted.
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -11,12 +12,12 @@ class LogoutHandler {
   Future<void> handleLogout(BuildContext context) async {
     try {
       final userEmail = supabase.auth.currentUser?.email;  // 👈 Get email
-      print('🔥 [LogoutHandler] Logging out $userEmail...');
+      print('Logging out $userEmail...');
 
       await supabase.auth.signOut();
       await _googleSignIn.signOut();
 
-      print('🎉 [LogoutHandler] Logout complete for $userEmail');
+      print(' Logout complete for $userEmail');
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,3 +1,8 @@
+/*
+  Displays the splash screen, initializes app essentials, checks auth status,
+  and routes users to login or home based on Supabase session state.
+*/
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../home/home_page.dart';

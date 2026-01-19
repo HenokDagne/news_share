@@ -1,3 +1,7 @@
+/*
+  Home screen scaffold that renders the main feed, wires bottom navigation,
+  and coordinates navigation to news, groups, notifications, and profile sections.
+*/
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;

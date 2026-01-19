@@ -1,4 +1,8 @@
 // lib/screens/auth/login.dart
+/*
+  Renders the login UI with email/password and Google auth,
+  wires submit handlers, and shows a logout button when already signed in.
+*/
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

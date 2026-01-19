@@ -1,3 +1,8 @@
+/*
+  Provides Supabase-backed post utilities: uploads images to the "posts" bucket
+  and creates posts in the "posts" table with optional title, content, and image URL.
+*/
+
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

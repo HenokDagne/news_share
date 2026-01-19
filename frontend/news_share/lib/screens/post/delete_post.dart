@@ -1,3 +1,7 @@
+
+/*
+  Deletes a post in Supabase only if it belongs to the current logged-in user.
+*/
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DeletePostService {

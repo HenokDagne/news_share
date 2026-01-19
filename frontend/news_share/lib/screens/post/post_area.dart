@@ -1,3 +1,7 @@
+/*
+  Renders a post composer with title and content fields,
+  exposes controllers via the widget, and disposes them safely on unmount.
+*/
 import 'package:flutter/material.dart';
 
 class PostArea extends StatefulWidget {

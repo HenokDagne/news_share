@@ -1,3 +1,8 @@
+/*
+  Scrollable profile items list with a tappable icon dialog demo and
+  placeholder rows styled with shadows and colored backgrounds.
+*/
+
 import 'package:flutter/material.dart';
 
 class Profileitem extends StatelessWidget {

@@ -1,3 +1,8 @@
+/*
+  Renders a publish/submit button, wires its onPressed callback,
+  and can show loading/disabled states while publishing.
+*/
+
 import 'package:flutter/material.dart';
 
 class PublishButton extends StatefulWidget {

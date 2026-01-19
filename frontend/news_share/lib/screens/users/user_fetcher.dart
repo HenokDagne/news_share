@@ -1,3 +1,8 @@
+/*
+  Fetches users from the Supabase 'profiles' table, orders by full_name,
+  and returns all except the currently logged-in user as UserItem models.
+*/
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'user_model.dart';

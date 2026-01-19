@@ -1,3 +1,7 @@
+
+/* NotificationPage shows the notifications list via FutureBuilder,
+   renders avatars/messages/timestamps, and wires bottom navigation
+   to Home, Users, Post, Notifications, and Profile tabs. */
 import 'package:flutter/material.dart';
 
 import '../home/top_app_bar.dart';

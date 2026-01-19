@@ -1,3 +1,8 @@
+/*
+  Bottom navigation bar that guards taps with Supabase auth,
+  redirects unauthenticated users to login with a SnackBar notice,
+  and includes a centered add button plus icons for home, groups, notifications, and profile.
+*/
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

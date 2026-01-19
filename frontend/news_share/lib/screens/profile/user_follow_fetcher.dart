@@ -1,4 +1,9 @@
 // lib/user/user_follow_fetcher.dart
+/*
+  Fetches a single user’s follow stats from Supabase (followers/following counts),
+  maps them into UserFollowData, and returns null on failure.
+*/
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

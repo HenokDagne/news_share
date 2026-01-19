@@ -1,3 +1,8 @@
+/*
+  Picks an avatar from the gallery, uploads it to Supabase Storage (upsert),
+  updates the profiles table with the public URL, and triggers a profile reload.
+*/
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';

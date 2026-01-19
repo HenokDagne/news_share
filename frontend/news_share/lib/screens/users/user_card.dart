@@ -1,3 +1,8 @@
+/*
+  Renders a user card with avatar, name, and follow/unfollow button,
+  initializes follow state from Supabase, and shows a loading spinner while updating.
+*/
+
 import 'package:flutter/material.dart';
 import 'user_model.dart';
 import 'follow_handler.dart';

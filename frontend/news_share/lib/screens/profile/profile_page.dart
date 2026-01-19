@@ -1,3 +1,8 @@
+/*
+  Displays the current user profile from Supabase, handles loading/error states,
+  lets users edit their profile, and includes bottom navigation across app sections.
+*/
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../home/top_app_bar.dart';

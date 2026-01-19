@@ -1,3 +1,8 @@
+/*
+  Lists posts with pull-to-refresh, shows loading states,
+  and wires edit/delete callbacks for each PostCard.
+*/
+
 import 'package:flutter/material.dart';
 import 'post_fetcher.dart';
 import 'post_card.dart';

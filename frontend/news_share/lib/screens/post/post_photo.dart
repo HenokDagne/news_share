@@ -1,3 +1,8 @@
+/*
+  Lets users pick an image or video from the gallery, tracks the selected media state,
+  and previews the chosen item (image or video placeholder) with simple action buttons.
+*/
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';

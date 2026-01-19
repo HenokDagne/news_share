@@ -1,3 +1,8 @@
+/*
+  Builds the home top app bar with title and action icons,
+  styled for the news feed and ready for search/filter actions.
+*/
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

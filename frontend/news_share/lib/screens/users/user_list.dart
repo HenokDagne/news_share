@@ -1,4 +1,9 @@
 // lib/screens/user/user_list_page.dart
+/*
+  Displays a list of users from Supabase, shows loading/error states,
+  and wires bottom navigation to other app sections.
+*/
+
 import 'package:flutter/material.dart';
 import '../home/top_app_bar.dart';
 import '../home/bottom_nav.dart';

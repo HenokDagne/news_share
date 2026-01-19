@@ -1,3 +1,10 @@
+
+/// NewsService fetches Tesla + US business headlines from NewsAPI, enforcing a 20s timeout,
+/// requires `NEWS_API_KEY` from .env, safely casts/merges responses, deduplicates by URL,
+/// and returns a UI-ready `List<NewsItem>`, falling back to an empty list on errors.
+// ...existing code...
+
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/news_item.dart';

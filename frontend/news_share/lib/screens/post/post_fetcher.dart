@@ -1,3 +1,8 @@
+/*
+  Fetches posts for the current logged-in user from Supabase,
+  ordering by newest first and returning an empty list on errors.
+*/
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PostFetcher {

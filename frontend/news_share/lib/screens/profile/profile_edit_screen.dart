@@ -1,3 +1,9 @@
+/*
+  Loads the current user's profile from Supabase, lets them edit username/full name/bio,
+  supports picking a temporary avatar preview, saves updates (and avatar) back to Supabase,
+  and surfaces success/error feedback via SnackBars.
+*/
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';

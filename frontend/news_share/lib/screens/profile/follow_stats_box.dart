@@ -1,4 +1,9 @@
 // lib/user/follow_stats_box.dart
+/*
+  Fetches and displays follower/following counts for a user,
+  shows a skeleton while loading, and renders a clean two-column stats box.
+*/
+
 import 'package:flutter/material.dart';
 import 'user_follow_fetcher.dart';
 import 'follow_stats_skeleton.dart';
