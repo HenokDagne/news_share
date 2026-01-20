@@ -38,7 +38,7 @@ class _NotificationPageState extends State<NotificationPage> {
           MaterialPageRoute(builder: (_) => const HomePage()),
         );
         break;
-      case 1: // 👈 New index for UserListPage
+      case 1: 
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const UserListPage()),

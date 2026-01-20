@@ -8,10 +8,10 @@ class NewsService {
 
   String get _apiKey => dotenv.env['NEWS_API_KEY2'] ?? '';
 
-  /// ✅ Returns List<NewsItem> (matches your UI)
+  /// Returns List<NewsItem> (matches your UI)
   Future<List<NewsItem>> fetchNews() async {
     try {
-      print('🚀 Fetching news from multiple endpoints...');
+      print(' Fetching news from multiple endpoints...');
 
       final apiKey = _apiKey;
       if (apiKey.isEmpty) {
@@ -44,7 +44,7 @@ class NewsService {
             }
           }
         } else {
-          print('❌ Endpoint ${i + 1} failed: ${responses[i].statusCode}');
+          print('Endpoint ${i + 1} failed: ${responses[i].statusCode}');
         }
       }
 
@@ -54,10 +54,10 @@ class NewsService {
           .map((json) => NewsItem.fromJson(json as Map<String, dynamic>))
           .toList();
 
-      print('✅ Returning ${newsItems.length} NewsItem objects');
+      print('Returning ${newsItems.length} NewsItem objects');
       return newsItems;
     } catch (e, stack) {
-      print('💥 NewsService ERROR: $e\n$stack');
+      print('NewsService ERROR: $e\n$stack');
       return []; // Empty list fallback
     }
   }

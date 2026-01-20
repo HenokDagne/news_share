@@ -16,7 +16,7 @@ class GoogleLoginHandler {
     return id;
   }
 
-  // ✅ Google Sign-In configured correctly
+  // Google Sign-In configured correctly
   late final GoogleSignIn _googleSignIn = GoogleSignIn(
     serverClientId: googleWebClientId,
     scopes: ['email', 'profile'],
@@ -24,27 +24,27 @@ class GoogleLoginHandler {
 
   Future<void> handleGoogleLogin(BuildContext context) async {
     try {
-      print('🔥 [GoogleLogin] Starting Google OAuth...');
+      print('Starting Google OAuth...');
 
-      // 1️⃣ Start Google sign-in
+      // 1️\Start Google sign-in
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        print('❌ [GoogleLogin] User cancelled sign-in');
+        print('User cancelled sign-in');
         return;
       }
 
-      print('✅ [GoogleLogin] Google user: ${googleUser.email}');
+      print(' Google user: ${googleUser.email}');
 
-      // 2️⃣ Get auth tokens
+      // Get auth tokens
       final googleAuth = await googleUser.authentication;
 
       if (googleAuth.idToken == null) {
         throw Exception('Failed to get Google ID token');
       }
 
-      print('🔑 [GoogleLogin] ID Token received');
+      print('ID Token received');
 
-      // 3️⃣ Sign in with Supabase
+      // 3️Sign in with Supabase
       final AuthResponse response = await supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: googleAuth.idToken!,
@@ -54,8 +54,8 @@ class GoogleLoginHandler {
       final user = response.user;
 
       if (user != null && context.mounted) {
-        print('🎉 [GoogleLogin] SUCCESS! User ID: ${user.id}');
-        print('📧 [GoogleLogin] Email: ${user.email}');
+        print('SUCCESS! User ID: ${user.id}');
+        print('Email: ${user.email}');
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -70,7 +70,7 @@ class GoogleLoginHandler {
         );
       }
     } on AuthException catch (e) {
-      print('🔴 [GoogleLogin] AuthException: ${e.message}');
+      print('AuthException: ${e.message}');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -80,7 +80,7 @@ class GoogleLoginHandler {
         );
       }
     } catch (e, stack) {
-      print('💥 [GoogleLogin] Error: $e');
+      print(' Error: $e');
       print('Stack: $stack');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

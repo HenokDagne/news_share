@@ -113,7 +113,7 @@ class _PostPageState extends State<PostPage> {
       MaterialPageRoute(builder: (_) => const HomePage()),
     );
   }
-  if (i == 1) { // 👈 UserListPage
+  if (i == 1) { 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const UserListPage()),
@@ -150,7 +150,7 @@ class _PostPageState extends State<PostPage> {
               child: Column(
                 children: [
                   postArea,
-                   const SizedBox(height: 12), // 👈 GAP HERE
+                   const SizedBox(height: 12), 
                   PostPhoto(key: postPhotoKey),
 
                   if (_uploading)

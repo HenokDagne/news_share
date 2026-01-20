@@ -55,7 +55,7 @@ class _NewsCardState extends State<NewsCard> {
     // If field is a Map
     if (field is Map<String, dynamic>) {
       final name = field['name'] ?? '';
-      return name; // ✅ only name
+      return name; 
     }
     // If field is a class/object with .name
     try {

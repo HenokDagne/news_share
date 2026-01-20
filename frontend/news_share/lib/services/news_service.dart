@@ -14,7 +14,7 @@ class NewsService {
 
   String get _apiKey => dotenv.env['NEWS_API_KEY'] ?? '';
 
-  /// ✅ Returns List<NewsItem> (matches your UI); supports optional query filtering
+  /// Returns List<NewsItem> (matches your UI); supports optional query filtering
   /// and blocks network fetches when no authenticated user is present.
   Future<List<NewsItem>> fetchNews({
     String query = '',
@@ -26,7 +26,7 @@ class NewsService {
       }
 
       print(
-        '🚀 Fetching multi-source news (Tesla, business, WSJ, TechCrunch, Apple)...',
+        'Fetching multi-source news (Tesla, business, WSJ, TechCrunch, Apple)...',
       );
 
       final apiKey = _apiKey;
@@ -61,7 +61,7 @@ class NewsService {
           }
         } else {
           print(
-            '⚠️ Source ${i + 1} returned status ${responses[i].statusCode}',
+            'Source ${i + 1} returned status ${responses[i].statusCode}',
           );
         }
       }
@@ -74,10 +74,10 @@ class NewsService {
           .where((item) => _matchesQuery(item, queryLower))
           .toList();
 
-      print('✅ Returning ${newsItems.length} NewsItem objects');
+      print('Returning ${newsItems.length} NewsItem objects');
       return newsItems;
     } catch (e, stack) {
-      print('💥 NewsService ERROR: $e\n$stack');
+      print(' NewsService ERROR: $e\n$stack');
       return []; // Empty list fallback
     }
   }

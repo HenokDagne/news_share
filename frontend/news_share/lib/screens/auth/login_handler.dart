@@ -18,22 +18,21 @@ class LoginHandler {
     GlobalKey<FormState> formKey,
     BuildContext context, // Added for navigation/errors
   ) async {
-    print('\n🔥 === SUPABASE LOGIN START ===');
-    print('📧 Email: ${emailController.text.trim()}');
+    print('\n=== SUPABASE LOGIN START ===');
+    print('Email: ${emailController.text.trim()}');
 
     if (formKey.currentState!.validate()) {
-      print('✅ Form validation passed');
+      print('Form validation passed');
       try {
-        print('🚀 Calling supabase.auth.signInWithPassword()...');
+        print('Calling supabase.auth.signInWithPassword()...');
 
         final response = await supabase.auth.signInWithPassword(
           email: emailController.text.trim(),
           password: passwordController.text,
         );
 
-        print('📱 Login response: $response');
-        print('👤 User: ${response.user?.id}');
-        print('🎉 [DEBUG] Login SUCCESS! User ID: ${response.user?.id}');
+        print('Login response: $response');
+       
 
         ScaffoldMessenger.of(
           context,
@@ -43,21 +42,21 @@ class LoginHandler {
           MaterialPageRoute(builder: (context) => const HomePage()),
         );
       } on AuthException catch (e) {
-        print('🔴 AuthException: ${e.message}');
-        print('🔴 Status code: ${e.statusCode}');
+        print('AuthException: ${e.message}');
+        print('Status code: ${e.statusCode}');
         _showError(context, _errorMessage(e.message));
       } catch (e) {
-        print('💥 Unexpected error: $e');
+        print('Unexpected error: $e');
         _showError(context, 'Login failed: $e');
       }
     } else {
-      print('❌ Form validation FAILED');
+      print('Form validation FAILED');
     }
-    print('🏁 === LOGIN END ===\n');
+    print('=== LOGIN END ===\n');
   }
 
   String _errorMessage(String message) {
-    print('📝 Raw error: $message');
+    print('Raw error: $message');
     switch (message) {
       case 'Invalid login credentials':
         return 'Wrong email or password';

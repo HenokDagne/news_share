@@ -11,7 +11,7 @@ class LogoutHandler {
 
   Future<void> handleLogout(BuildContext context) async {
     try {
-      final userEmail = supabase.auth.currentUser?.email;  // 👈 Get email
+      final userEmail = supabase.auth.currentUser?.email;  
       print('Logging out $userEmail...');
 
       await supabase.auth.signOut();
@@ -22,7 +22,7 @@ class LogoutHandler {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Logged out successfully, ${userEmail ?? "User"}!'),  // 👈 Personalized!
+            content: Text('Logged out successfully, ${userEmail ?? "User"}!'),  
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),

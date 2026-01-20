@@ -1,7 +1,7 @@
 # NewsShare
 
 <p align="center">
-	<img src="https://supabase.com/logos/supabase-logo-icon.svg" alt="Supabase Logo" width="48"/>
+   <img src="frontend/news_share/assets/images/supabase.png" alt="Supabase Logo" width="96"/>
 	<img src="https://storage.googleapis.com/cms-storage-bucket/0dbfcc7a59cd1cf16282.png" alt="Flutter Logo" width="48"/>
 </p>
 
@@ -16,6 +16,10 @@
 ## Project SRS
 
 - Detailed Software Requirements Specification (SRS): [Google Doc](https://docs.google.com/document/d/12qh8hS6bCbr1lodMh8fbr4hANuIuXpUY/edit?usp=sharing&ouid=108335093438878048436&rtpof=true&sd=true)
+
+## ER Diagram
+
+- ER diagram (dbdiagram.io): [View diagram](https://dbdiagram.io/d/696e9027d6e030a024802b87)
 
 ### Why Supabase?
 

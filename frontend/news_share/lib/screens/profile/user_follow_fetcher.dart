@@ -41,8 +41,8 @@ class UserFollowFetcher {
 
       return UserFollowData.fromJson(data);
     } catch (e, stack) {
-      debugPrint('❌ fetchFollowStats error: $e');
-      debugPrint('📌 stack: $stack');
+      debugPrint('fetchFollowStats error: $e'),
+      debugPrint(' stack: $stack');
       return null;
     }
   }

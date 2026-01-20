@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/news_service.dart';
-import '../../models/news_item.dart'; // ✅ Use shared model
+import '../../models/news_item.dart'; // 
 import 'top_app_bar.dart';
 import 'create_post_box.dart';
 import 'news_card.dart';
@@ -54,9 +54,9 @@ class _HomePageState extends State<HomePage> {
     try {
       return await _newsService.fetchNews(
         query: query,
-      ); // ✅ Direct API call with filter
+      ); 
     } catch (e) {
-      print('💥 API failed, using local fallback: $e');
+      print('API failed, using local fallback: $e');
       return _loadLocalNews(query: query);
     }
   }
@@ -88,7 +88,7 @@ class _HomePageState extends State<HomePage> {
   void onNavTap(int i) {
     if (i == currentIndex) return;
     switch (i) {
-      case 1: // 👈 UserListPage
+      case 1: 
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const UserListPage()),
