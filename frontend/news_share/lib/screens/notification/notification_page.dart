@@ -1,4 +1,3 @@
-
 /* NotificationPage shows the notifications list via FutureBuilder,
    renders avatars/messages/timestamps, and wires bottom navigation
    to Home, Users, Post, Notifications, and Profile tabs. */
@@ -11,6 +10,8 @@ import '../post/post_page.dart';
 import '../profile/profile_page.dart';
 import 'notification.dart';
 import '../users/user_list.dart';
+import '../auth/login.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -38,7 +39,7 @@ class _NotificationPageState extends State<NotificationPage> {
           MaterialPageRoute(builder: (_) => const HomePage()),
         );
         break;
-      case 1: 
+      case 1:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const UserListPage()),
@@ -65,6 +66,8 @@ class _NotificationPageState extends State<NotificationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isAuthenticated = Supabase.instance.client.auth.currentUser != null;
+
     return Scaffold(
       backgroundColor: const Color(0xFFc0c1c3),
       appBar: const PreferredSize(
@@ -85,101 +88,150 @@ class _NotificationPageState extends State<NotificationPage> {
               ),
             ),
             Expanded(
-              child: FutureBuilder<List<NotificationData>>(
-                future: _notificationsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  }
-                  final items = snapshot.data ?? [];
-                  if (items.isEmpty) {
-                    return const Center(child: Text('No notifications'));
-                  }
+              child: isAuthenticated
+                  ? FutureBuilder<List<NotificationData>>(
+                      future: _notificationsFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text('Error: ${snapshot.error}'),
+                          );
+                        }
+                        final items = snapshot.data ?? [];
+                        if (items.isEmpty) {
+                          return const Center(child: Text('No notifications'));
+                        }
 
-                  return ListView.builder(
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final n = items[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 6,
-                        ),
-                        child: Container(
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              const BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 12,
-                                offset: Offset(0, 6),
+                        return ListView.builder(
+                          itemCount: items.length,
+                          itemBuilder: (context, index) {
+                            final n = items[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
                               ),
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
-                                blurRadius: 2,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 8),
-                              // Safe avatar from model (handles errors)
-                              n.buildAvatar(context, size: 50),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      height: 40,
-                                      width: double.infinity,
-                                      alignment: Alignment.topLeft,
-                                      padding: const EdgeInsets.only(
-                                        top: 8,
-                                        left: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                      ),
-                                      child: Text(
-                                        n.message,
-                                        style: const TextStyle(fontSize: 11),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                              child: Container(
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    const BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 12,
+                                      offset: Offset(0, 6),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      height: 20,
-                                      width: double.infinity,
-                                      alignment: Alignment.bottomLeft,
-                                      child: Text(
-                                        n.time,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.blue,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.03),
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    const SizedBox(width: 8),
+                                    n.buildAvatar(context, size: 50),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            height: 40,
+                                            width: double.infinity,
+                                            alignment: Alignment.topLeft,
+                                            padding: const EdgeInsets.only(
+                                              top: 8,
+                                              left: 6,
+                                            ),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.white,
+                                            ),
+                                            child: Text(
+                                              n.message,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            height: 20,
+                                            width: double.infinity,
+                                            alignment: Alignment.bottomLeft,
+                                            child: Text(
+                                              n.time,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.blue,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
+                            );
+                          },
+                        );
+                      },
+                    )
+                  : Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.notifications_off_outlined,
+                              size: 72,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Sign in to view notifications',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Notifications stay private to each account.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginPage(),
+                                  ),
+                                );
+                              },
+                              child: const Text('Sign In'),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                  );
-                },
-              ),
+                      ),
+                    ),
             ),
           ],
         ),

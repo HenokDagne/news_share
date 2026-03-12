@@ -4,6 +4,7 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'user_model.dart';
 import 'follow_handler.dart';
 
@@ -64,6 +65,8 @@ class _UserCardState extends State<UserCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isAuthenticated = Supabase.instance.client.auth.currentUser != null;
+
     return Card(
       color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -89,36 +92,40 @@ class _UserCardState extends State<UserCard> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  SizedBox(
-                    height: 36,
-                    child: ElevatedButton(
-                      onPressed: _loading ? null : _toggleFollow,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFollowing
-                            ? Colors.grey[300]
-                            : Colors.blue,
-                        foregroundColor: _isFollowing
-                            ? Colors.black
-                            : Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                  if (isAuthenticated) ...[
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: 36,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _toggleFollow,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isFollowing
+                              ? Colors.grey[300]
+                              : Colors.blue,
+                          foregroundColor: _isFollowing
+                              ? Colors.black
+                              : Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          textStyle: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        textStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        child: _loading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(_isFollowing ? 'Unfollow' : 'Follow'),
                       ),
-                      child: _loading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(_isFollowing ? 'Unfollow' : 'Follow'),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

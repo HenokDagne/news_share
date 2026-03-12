@@ -15,10 +15,10 @@ class NewsService {
   String get _apiKey => dotenv.env['NEWS_API_KEY'] ?? '';
 
   /// Returns List<NewsItem> (matches your UI); supports optional query filtering
-  /// and blocks network fetches when no authenticated user is present.
+  /// and can optionally require an authenticated user for protected contexts.
   Future<List<NewsItem>> fetchNews({
     String query = '',
-    bool requireAuth = true,
+    bool requireAuth = false,
   }) async {
     try {
       if (requireAuth && Supabase.instance.client.auth.currentUser == null) {
@@ -60,9 +60,7 @@ class NewsService {
             }
           }
         } else {
-          print(
-            'Source ${i + 1} returned status ${responses[i].statusCode}',
-          );
+          print('Source ${i + 1} returned status ${responses[i].statusCode}');
         }
       }
 

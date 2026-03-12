@@ -5,9 +5,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/news_service.dart';
-import '../../models/news_item.dart'; // 
+import '../../models/news_item.dart'; //
 import 'top_app_bar.dart';
 import 'create_post_box.dart';
 import 'news_card.dart';
@@ -16,7 +15,6 @@ import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
 import 'bottom_nav.dart';
 import '../users/user_list.dart';
-import '../auth/login.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -35,26 +33,12 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      newsFuture = Future.value(<NewsItem>[]);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-        );
-      });
-      return;
-    }
-
     newsFuture = _loadNews();
   }
 
   Future<List<NewsItem>> _loadNews({String query = ''}) async {
     try {
-      return await _newsService.fetchNews(
-        query: query,
-      ); 
+      return await _newsService.fetchNews(query: query, requireAuth: false);
     } catch (e) {
       print('API failed, using local fallback: $e');
       return _loadLocalNews(query: query);
@@ -88,7 +72,7 @@ class _HomePageState extends State<HomePage> {
   void onNavTap(int i) {
     if (i == currentIndex) return;
     switch (i) {
-      case 1: 
+      case 1:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const UserListPage()),

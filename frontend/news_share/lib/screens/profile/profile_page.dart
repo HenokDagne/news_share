@@ -13,6 +13,7 @@ import '../notification/notification_page.dart';
 import 'profile_edit_screen.dart';
 import '../users/user_list.dart';
 import 'follow_stats_box.dart';
+import '../auth/login.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -36,7 +37,15 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadProfile() async {
     try {
-      final userId = supabase.auth.currentUser!.id;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        setState(() {
+          _profile = null;
+          _isLoading = false;
+        });
+        return;
+      }
+
       final data = await supabase
           .from('profiles')
           .select()
@@ -88,6 +97,14 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _editProfile() {
+    if (supabase.auth.currentUser == null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ProfileEditScreen()),
@@ -96,8 +113,55 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = supabase.auth.currentUser;
+
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (currentUser == null) {
+      return Scaffold(
+        backgroundColor: Colors.grey[100],
+        appBar: const PreferredSize(
+          preferredSize: Size.fromHeight(70),
+          child: TopAppBar(),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.person_outline, size: 72),
+                const SizedBox(height: 16),
+                const Text(
+                  'Guest Profile',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Sign in to edit your profile, manage your posts, and view personal activity.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                    );
+                  },
+                  child: const Text('Sign In'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        bottomNavigationBar: BottomNavBar(
+          currentIndex: _currentIndex,
+          onChanged: _onNavTap,
+        ),
+      );
     }
 
     if (_profile == null) {
@@ -193,7 +257,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 16),
             // Followers / Following stats
-            FollowStatsBox(userId: supabase.auth.currentUser!.id),
+            FollowStatsBox(userId: currentUser.id),
             const SizedBox(height: 16),
             // Edit profile button
             ElevatedButton(

@@ -30,9 +30,9 @@ class _PostListPageState extends State<PostListPage> {
     try {
       posts = await fetcher.fetchPosts();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to load posts')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to load posts')));
     } finally {
       setState(() => isLoading = false);
     }
@@ -55,6 +55,7 @@ class _PostListPageState extends State<PostListPage> {
           final post = posts[index];
           return PostCard(
             postId: post['id']?.toString() ?? '',
+            postUserId: post['user_id']?.toString(),
             title: post['title']?.toString() ?? '',
             content: post['content']?.toString() ?? '',
             imageUrl: post['image_url']?.toString(),

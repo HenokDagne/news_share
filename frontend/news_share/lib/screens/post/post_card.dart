@@ -5,10 +5,12 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'delete_post.dart';
 
 class PostCard extends StatefulWidget {
   final String postId;
+  final String? postUserId;
   final String? title;
   final String? content;
   final String? imageUrl;
@@ -20,6 +22,7 @@ class PostCard extends StatefulWidget {
   const PostCard({
     super.key,
     required this.postId,
+    this.postUserId,
     this.title,
     this.content,
     this.imageUrl,
@@ -38,7 +41,7 @@ class _PostCardState extends State<PostCard> {
 
   // ---------------- IMAGE ----------------
   Widget _buildImage() {
-    if (widget.imageUrl == null && widget.imageUrl!.isEmpty) {
+    if (widget.imageUrl == null || widget.imageUrl!.isEmpty) {
       return Image.asset(
         'assets/images/images.png',
         height: 200,
@@ -66,7 +69,7 @@ class _PostCardState extends State<PostCard> {
 
   // ---------------- CONTENT ----------------
   Widget _buildContent() {
-    if (widget.content == null && widget.content!.isEmpty) {
+    if (widget.content == null || widget.content!.isEmpty) {
       return const SizedBox();
     }
 
@@ -145,6 +148,10 @@ class _PostCardState extends State<PostCard> {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final canManage =
+        currentUserId != null && currentUserId == widget.postUserId;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -169,31 +176,32 @@ class _PostCardState extends State<PostCard> {
                           ),
                         ),
                       ),
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (value) async {
-                          if (value == 'edit') widget.onEdit?.call();
-                          if (value == 'delete') {
-                            await DeletePostService.deletePost(widget.postId);
-                            if (widget.onDelete != null) widget.onDelete!();
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Post deleted')),
-                              );
+                      if (canManage)
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert),
+                          onSelected: (value) async {
+                            if (value == 'edit') widget.onEdit?.call();
+                            if (value == 'delete') {
+                              await DeletePostService.deletePost(widget.postId);
+                              if (widget.onDelete != null) widget.onDelete!();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Post deleted')),
+                                );
+                              }
                             }
-                          }
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'edit', child: Text('Edit')),
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Text(
-                              'Delete',
-                              style: TextStyle(color: Colors.red),
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
                     ],
                   ),
 

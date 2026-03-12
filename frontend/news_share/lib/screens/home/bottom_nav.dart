@@ -1,12 +1,8 @@
 /*
-  Bottom navigation bar that guards taps with Supabase auth,
-  redirects unauthenticated users to login with a SnackBar notice,
+  Bottom navigation bar that works for guests and authenticated users,
   and includes a centered add button plus icons for home, groups, notifications, and profile.
 */
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-import '../auth/login.dart'; // Adjust path
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -17,30 +13,6 @@ class BottomNavBar extends StatelessWidget {
     required this.currentIndex,
     required this.onChanged,
   });
-
-  /// Check if user is logged in
-  bool get _isAuthenticated {
-    return Supabase.instance.client.auth.currentUser != null;
-  }
-
-  /// Handle taps with auth check
-  void _handleTap(BuildContext context, int index) {
-    if (!_isAuthenticated) {
-      // 🚨 User not authenticated → redirect to login
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must login first')),
-      );
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
-      return; // Stop further navigation
-    }
-
-    // ✅ Authenticated → navigate
-    onChanged(index);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +29,7 @@ class BottomNavBar extends StatelessWidget {
 
             // ➕ Center button
             GestureDetector(
-              onTap: () => _handleTap(context, 2),
+              onTap: () => onChanged(2),
               child: Container(
                 height: 52,
                 width: 52,
@@ -86,7 +58,7 @@ class BottomNavBar extends StatelessWidget {
     final bool isActive = index == currentIndex;
 
     return InkWell(
-      onTap: () => _handleTap(context, index),
+      onTap: () => onChanged(index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
@@ -96,9 +68,7 @@ class BottomNavBar extends StatelessWidget {
         child: Icon(
           icon,
           size: isActive ? 28 : 22,
-          color: isActive
-              ? const Color.fromARGB(255, 15, 15, 17)
-              : Colors.grey,
+          color: isActive ? const Color.fromARGB(255, 15, 15, 17) : Colors.grey,
         ),
       ),
     );

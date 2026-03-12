@@ -41,7 +41,10 @@ class FollowHandler {
   /// Check if the currently authenticated user follows the target user
   Future<bool> isFollowing(String targetUserId) async {
     try {
-      final currentUserId = supabase.auth.currentUser!.id;
+      final currentUserId = supabase.auth.currentUser?.id;
+      if (currentUserId == null) {
+        return false;
+      }
 
       final data = await supabase
           .from('followers')
@@ -67,14 +70,10 @@ class FollowHandler {
           .eq('id', userId)
           .single();
 
-      if (data != null) {
-        return {
-          'followers_count': data['followers_count'] ?? 0,
-          'following_count': data['following_count'] ?? 0,
-        };
-      }
-
-    
+      return {
+        'followers_count': data['followers_count'] ?? 0,
+        'following_count': data['following_count'] ?? 0,
+      };
     } catch (e, stack) {
       print('fetchFollowCounts error: $e');
       print('Stack trace: $stack');
