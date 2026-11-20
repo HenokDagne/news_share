@@ -1,0 +1,1531 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account registered successfully"
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "409": {
+            "description": "Email or username already in use"
+          },
+          "429": {
+            "description": "Too many requests"
+          }
+        },
+        "summary": "Register a new account",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in successfully"
+          },
+          "401": {
+            "description": "Invalid email or password"
+          },
+          "429": {
+            "description": "Too many requests"
+          }
+        },
+        "summary": "Login with email and password",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tokens refreshed successfully"
+          },
+          "401": {
+            "description": "Invalid or expired refresh token"
+          }
+        },
+        "summary": "Refresh access and refresh tokens",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Logged out successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Revoke refresh token (logout)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "UsersController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get current user profile (includes email)",
+        "tags": [
+          "Users"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "409": {
+            "description": "Username already in use"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update current user profile",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/me/avatar": {
+      "put": {
+        "operationId": "UsersController_uploadAvatar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Avatar uploaded successfully"
+          },
+          "400": {
+            "description": "Invalid file type or missing file"
+          },
+          "413": {
+            "description": "File too large"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Upload or replace avatar image (JPEG, PNG, WebP, max 2 MB)",
+        "tags": [
+          "Users"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_deleteAvatar",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Avatar deleted successfully"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Delete current user avatar",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "operationId": "UsersController_searchUsers",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor ID from previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search term for username or full name",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProfileResponseDto"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "5c1f3a2e-9d4b-4f2b-8f0e-2f3c9b1a7d10"
+                    },
+                    "hasMore": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Search user profiles",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}": {
+      "get": {
+        "operationId": "UsersController_getProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get a user profile by ID (without email)",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/v1/posts": {
+      "post": {
+        "operationId": "PostsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty post or invalid file"
+          },
+          "413": {
+            "description": "File exceeds 5 MB limit"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Create a new post (title, content, or image)",
+        "tags": [
+          "Posts"
+        ]
+      },
+      "get": {
+        "operationId": "PostsController_timeline",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor ID from previous page",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PostResponseDto"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "5c1f3a2e-9d4b-4f2b-8f0e-2f3c9b1a7d10"
+                    },
+                    "hasMore": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Global timeline, newest first",
+        "tags": [
+          "Posts"
+        ]
+      }
+    },
+    "/api/v1/feed": {
+      "get": {
+        "operationId": "PostsController_feed",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor ID from previous page",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PostResponseDto"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "5c1f3a2e-9d4b-4f2b-8f0e-2f3c9b1a7d10"
+                    },
+                    "hasMore": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Personal feed: posts from followed users + own",
+        "tags": [
+          "Posts"
+        ]
+      }
+    },
+    "/api/v1/posts/{id}": {
+      "get": {
+        "operationId": "PostsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID"
+          },
+          "404": {
+            "description": "Post not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get a post by ID",
+        "tags": [
+          "Posts"
+        ]
+      },
+      "patch": {
+        "operationId": "PostsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty post or bad file"
+          },
+          "403": {
+            "description": "Forbidden: not your post"
+          },
+          "404": {
+            "description": "Post not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Update a post (author only)",
+        "tags": [
+          "Posts"
+        ]
+      },
+      "delete": {
+        "operationId": "PostsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Post deleted"
+          },
+          "403": {
+            "description": "Forbidden: not your post"
+          },
+          "404": {
+            "description": "Post not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Delete a post (author only)",
+        "tags": [
+          "Posts"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/posts": {
+      "get": {
+        "operationId": "PostsController_userPosts",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor ID from previous page",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PostResponseDto"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "5c1f3a2e-9d4b-4f2b-8f0e-2f3c9b1a7d10"
+                    },
+                    "hasMore": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get posts by a specific user",
+        "tags": [
+          "Posts"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/follow": {
+      "post": {
+        "operationId": "FollowsController_follow",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Follow status updated"
+          },
+          "400": {
+            "description": "Cannot follow yourself or invalid UUID"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Follow a user",
+        "tags": [
+          "Follows"
+        ]
+      },
+      "delete": {
+        "operationId": "FollowsController_unfollow",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unfollowed successfully"
+          },
+          "400": {
+            "description": "Cannot unfollow yourself or invalid UUID"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Unfollow a user",
+        "tags": [
+          "Follows"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/follow-status": {
+      "get": {
+        "operationId": "FollowsController_getFollowStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "isFollowing": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "isFollowedBy": {
+                      "type": "boolean",
+                      "example": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Check mutual follow status between current user and target user",
+        "tags": [
+          "Follows"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/followers": {
+      "get": {
+        "operationId": "FollowsController_getFollowers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor ID from previous page",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProfileResponseDto"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "5c1f3a2e-9d4b-4f2b-8f0e-2f3c9b1a7d10"
+                    },
+                    "hasMore": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get a user's followers list",
+        "tags": [
+          "Follows"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/following": {
+      "get": {
+        "operationId": "FollowsController_getFollowing",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor ID from previous page",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProfileResponseDto"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "5c1f3a2e-9d4b-4f2b-8f0e-2f3c9b1a7d10"
+                    },
+                    "hasMore": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get list of users this user follows",
+        "tags": [
+          "Follows"
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "NotificationsController_findAll",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor ID from previous page",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "unread",
+            "required": false,
+            "in": "query",
+            "description": "Filter unread notifications only",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/NotificationResponseDto"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "example": "5c1f3a2e-9d4b-4f2b-8f0e-2f3c9b1a7d10"
+                    },
+                    "hasMore": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "List notifications for current user",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationsController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "count": {
+                      "type": "number",
+                      "example": 3
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Get unread notifications count",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "uuid"
+                    },
+                    "isRead": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notification not found or not yours"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Mark single notification as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationsController_readAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "updated": {
+                      "type": "number",
+                      "example": 5
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Mark all notifications as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}": {
+      "delete": {
+        "operationId": "NotificationsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Notification deleted"
+          },
+          "404": {
+            "description": "Notification not found or not yours"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Delete a notification",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "News Share API",
+    "description": "News Share REST API documentation",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "access-token": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "ada@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "S3cure-pass!"
+          },
+          "username": {
+            "type": "string",
+            "example": "ada_l",
+            "description": "3-20 characters: letters, numbers, underscore"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Ada Lovelace"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "username"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "ada@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "S3cure-pass!"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "example": "9f2c..."
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "MeResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          },
+          "username": {
+            "type": "string",
+            "example": "ada_l"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Ada Lovelace",
+            "nullable": true
+          },
+          "bio": {
+            "type": "string",
+            "example": "Mathematician",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "example": "https://res.cloudinary.com/demo/image/upload/v1/news_share/avatars/uid.jpg",
+            "nullable": true
+          },
+          "followersCount": {
+            "type": "number",
+            "example": 12
+          },
+          "followingCount": {
+            "type": "number",
+            "example": 7
+          },
+          "email": {
+            "type": "string",
+            "example": "ada@example.com"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "followersCount",
+          "followingCount",
+          "email"
+        ]
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "ada_lovelace",
+            "description": "3-20 letters, digits or underscores"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Ada Lovelace"
+          },
+          "bio": {
+            "type": "string",
+            "example": "Mathematician and writer"
+          }
+        }
+      },
+      "ProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          },
+          "username": {
+            "type": "string",
+            "example": "ada_l"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Ada Lovelace",
+            "nullable": true
+          },
+          "bio": {
+            "type": "string",
+            "example": "Mathematician",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "example": "https://res.cloudinary.com/demo/image/upload/v1/news_share/avatars/uid.jpg",
+            "nullable": true
+          },
+          "followersCount": {
+            "type": "number",
+            "example": 12
+          },
+          "followingCount": {
+            "type": "number",
+            "example": 7
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "followersCount",
+          "followingCount"
+        ]
+      },
+      "CreatePostDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Breaking News",
+            "maxLength": 150
+          },
+          "content": {
+            "type": "string",
+            "example": "This is the article content...",
+            "maxLength": 5000
+          }
+        }
+      },
+      "AuthorResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          },
+          "username": {
+            "type": "string",
+            "example": "ada_l"
+          },
+          "fullName": {
+            "type": "string",
+            "example": "Ada Lovelace",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "example": "https://res.cloudinary.com/demo/image/upload/v1/news_share/avatars/uid.jpg",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "username"
+        ]
+      },
+      "PostResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          },
+          "title": {
+            "type": "string",
+            "example": "Headline",
+            "nullable": true
+          },
+          "content": {
+            "type": "string",
+            "example": "Story text...",
+            "nullable": true
+          },
+          "imageUrl": {
+            "type": "string",
+            "example": "https://res.cloudinary.com/demo/image/upload/v1/news_share/posts/uid/abc.jpg",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-11-18T10:00:00.000Z"
+          },
+          "author": {
+            "$ref": "#/components/schemas/AuthorResponseDto"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "author"
+        ]
+      },
+      "UpdatePostDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Updated Headline",
+            "maxLength": 150
+          },
+          "content": {
+            "type": "string",
+            "example": "Updated content...",
+            "maxLength": 5000
+          }
+        }
+      },
+      "NotificationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          },
+          "type": {
+            "type": "string",
+            "example": "new_post",
+            "enum": [
+              "follow",
+              "new_post"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "example": "A user you follow posted something new!",
+            "nullable": true
+          },
+          "isRead": {
+            "type": "boolean",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-11-18T10:00:00.000Z"
+          },
+          "postId": {
+            "type": "string",
+            "example": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+            "nullable": true
+          },
+          "actor": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuthorResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "isRead",
+          "createdAt"
+        ]
+      }
+    }
+  }
+}

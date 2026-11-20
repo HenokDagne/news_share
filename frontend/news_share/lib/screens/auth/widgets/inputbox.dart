@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
 class InputBox extends StatelessWidget {
-  
   final TextEditingController emailController;
   final TextEditingController passwordController;
+  final TextEditingController? usernameController;
+  final TextEditingController? fullNameController;
 
   const InputBox({
     super.key,
-    
     required this.emailController,
     required this.passwordController,
+    this.usernameController,
+    this.fullNameController,
   });
 
   InputDecoration _fieldDecoration(String hint) => InputDecoration(
@@ -39,7 +41,34 @@ class InputBox extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-       
+        if (usernameController != null) ...[
+          Text('Username', style: _labelStyle),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: usernameController,
+            decoration: _fieldDecoration('Username (3-20 letters/numbers)'),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Username required';
+              if (v.trim().length < 3 || v.trim().length > 20) {
+                return '3-20 characters required';
+              }
+              if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(v.trim())) {
+                return 'Letters, numbers, underscores only';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 18),
+        ],
+        if (fullNameController != null) ...[
+          Text('Full Name (Optional)', style: _labelStyle),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: fullNameController,
+            decoration: _fieldDecoration('Full Name'),
+          ),
+          const SizedBox(height: 18),
+        ],
         Text('Email', style: _labelStyle),
         const SizedBox(height: 6),
         TextFormField(
@@ -54,8 +83,8 @@ class InputBox extends StatelessWidget {
         TextFormField(
           controller: passwordController,
           obscureText: true,
-          decoration: _fieldDecoration('Create a strong password'),
-          validator: (v) => v?.length != null && v!.length < 6 ? 'Min 6 chars' : null,
+          decoration: _fieldDecoration('Create a strong password (min 8 chars)'),
+          validator: (v) => v != null && v.length < 8 ? 'Min 8 characters required' : null,
         ),
         const SizedBox(height: 26),
       ],

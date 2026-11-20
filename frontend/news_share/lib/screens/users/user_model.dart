@@ -21,11 +21,14 @@ class UserItem {
   });
 
   factory UserItem.fromJson(Map<String, dynamic> json) {
+    final name = (json['fullName'] ?? json['full_name'] ?? json['username'] ?? '').toString();
+    final avatar = (json['avatarUrl'] ?? json['avatar_url'] ?? '').toString();
+
     return UserItem(
       id: (json['id'] ?? '').toString(),
-      full_name: (json['full_name'] ?? '').toString(),
-      avatarUrl: (json['avatar_url'] ?? '').toString(), // match Supabase field
-      isFollowing: json['is_following'] == true,
+      full_name: name,
+      avatarUrl: avatar,
+      isFollowing: json['isFollowing'] == true || json['is_following'] == true,
     );
   }
 

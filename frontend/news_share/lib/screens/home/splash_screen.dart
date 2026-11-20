@@ -4,6 +4,7 @@
 */
 
 import 'package:flutter/material.dart';
+import '../../main.dart';
 import '../home/home_page.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -17,12 +18,19 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
-    });
+    _startApp();
+  }
+
+  Future<void> _startApp() async {
+    // Await both initialization tasks and minimum splash display time in parallel
+    await Future.wait([
+      appInitializationFuture,
+      Future.delayed(const Duration(milliseconds: 1500)),
+    ]);
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
   }
 
   @override
@@ -48,6 +56,8 @@ class _SplashScreenState extends State<SplashScreen> {
                       'assets/images/logo.png',
                       width: 60,
                       height: 60,
+                      cacheWidth: 180,
+                      cacheHeight: 180,
                       fit: BoxFit.cover,
                     ),
                   ),

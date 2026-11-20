@@ -1,15 +1,13 @@
-// ...existing code...
 /*
   Renders the post screen: lets users enter title/content, pick/upload an image,
   publish via PostService, shows publish feedback, and displays the post feed.
   Also handles bottom navigation to Home, Users, Notifications, and Profile.
 */
-// ...existing code...
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../services/api_client.dart';
 import '../home/top_app_bar.dart';
 import '../home/bottom_nav.dart';
 import '../home/home_page.dart';
@@ -34,14 +32,12 @@ class _PostPageState extends State<PostPage> {
   bool _uploading = false;
 
   final GlobalKey<PostPhotoState> postPhotoKey = GlobalKey<PostPhotoState>();
-
-  final SupabaseClient supabase = Supabase.instance.client;
   late final PostArea postArea;
 
   String? fullName;
   String? avatarUrl;
 
-  bool get _isAuthenticated => supabase.auth.currentUser != null;
+  bool get _isAuthenticated => ApiClient.instance.isAuthenticated;
 
   @override
   void initState() {
@@ -51,19 +47,18 @@ class _PostPageState extends State<PostPage> {
   }
 
   Future<void> _fetchProfile() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
-    final data = await supabase
-        .from('profiles')
-        .select('full_name, avatar_url')
-        .eq('id', user.id)
-        .single();
-
-    setState(() {
-      fullName = data['full_name'];
-      avatarUrl = data['avatar_url'];
-    });
+    if (!_isAuthenticated) return;
+    try {
+      final user = await ApiClient.instance.getMe();
+      if (mounted) {
+        setState(() {
+          fullName = user.fullName;
+          avatarUrl = user.avatarUrl;
+        });
+      }
+    } catch (e) {
+      debugPrint('PostPage _fetchProfile error: $e');
+    }
   }
 
   Future<void> _publishPost() async {
@@ -73,37 +68,51 @@ class _PostPageState extends State<PostPage> {
 
     final title = postArea.titleController.text.trim();
     final content = postArea.contentController.text.trim();
-    String? imageUrl;
-
     final mediaPath = postPhotoKey.currentState?.selectedMediaPath;
 
-    if (mediaPath != null) {
-      setState(() => _uploading = true);
-      imageUrl = await PostService().uploadImage(File(mediaPath));
-      setState(() => _uploading = false);
-    }
-
-    if (title.isEmpty && content.isEmpty && imageUrl == null) {
+    if (title.isEmpty && content.isEmpty && mediaPath == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Add content or image')));
       return;
     }
 
-    final success = await PostService().createPost(
+    setState(() => _uploading = true);
+
+    final postService = PostService();
+    final success = await postService.createPost(
       title: title.isNotEmpty ? title : null,
       content: content.isNotEmpty ? content : null,
-      imageUrl: imageUrl,
+      imageFile: mediaPath != null ? File(mediaPath) : null,
     );
+
+    setState(() => _uploading = false);
 
     if (success) {
       postArea.titleController.clear();
       postArea.contentController.clear();
       postPhotoKey.currentState?.clearMedia();
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Post published')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Post published successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Re-render post page to show newest post
+        setState(() {});
+      }
+    } else {
+      if (mounted) {
+        final err = postService.lastError ?? 'Failed to publish post';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed: $err'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

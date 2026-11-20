@@ -3,7 +3,7 @@
   callers can filter posts/news (e.g., NewsService search) or handle post creation.
 */
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/api_client.dart';
 
 class CreatePostBox extends StatefulWidget {
   final TextEditingController controller;
@@ -24,7 +24,6 @@ class CreatePostBox extends StatefulWidget {
 class _CreatePostBoxState extends State<CreatePostBox> {
   String? _avatarUrl;
   bool _isLoggedIn = false;
-  final supabase = Supabase.instance.client;
 
   @override
   void initState() {
@@ -34,24 +33,15 @@ class _CreatePostBoxState extends State<CreatePostBox> {
 
   Future<void> _loadAvatar() async {
     try {
-      final user = supabase.auth.currentUser;
+      final user = ApiClient.instance.currentUser;
       if (user == null) {
         setState(() => _isLoggedIn = false);
         return;
       }
 
-      setState(() => _isLoggedIn = true);
-
-      final data = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('id', user.id)
-          .single();
-
-      if (!mounted) return;
-      final url = (data['avatar_url'] ?? '').toString();
       setState(() {
-        _avatarUrl = url.isNotEmpty ? url : null;
+        _isLoggedIn = true;
+        _avatarUrl = user.avatarUrl;
       });
     } catch (e) {
       debugPrint('CreatePostBox avatar fetch error: $e');
@@ -63,7 +53,7 @@ class _CreatePostBoxState extends State<CreatePostBox> {
     final showRing = _isLoggedIn;
 
     return Container(
-      margin: EdgeInsets.only(top: 4),
+      margin: const EdgeInsets.only(top: 4),
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -85,7 +75,6 @@ class _CreatePostBoxState extends State<CreatePostBox> {
             _avatar(radius: 24),
           const SizedBox(width: 12),
           Expanded(
-            
             child: Container(
               height: 44,
               padding: const EdgeInsets.symmetric(horizontal: 14),

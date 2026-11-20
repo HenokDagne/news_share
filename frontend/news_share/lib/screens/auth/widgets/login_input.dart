@@ -51,7 +51,7 @@ class _LoginInputState extends State<LoginInput> {
           controller: widget.emailController,
           keyboardType: TextInputType.emailAddress,
           decoration: _fieldDecoration('Email or phone'),
-          validator: (v) => v?.isEmpty ?? true || !v!.contains('@')
+          validator: (v) => (v == null || v.isEmpty || !v.contains('@'))
               ? 'Enter valid email'
               : null,
         ),
@@ -73,7 +73,7 @@ class _LoginInputState extends State<LoginInput> {
             ),
           ),
           validator: (v) =>
-              v?.isEmpty ?? true || v!.length < 6 ? 'Password too short' : null,
+              (v == null || v.isEmpty || v.length < 6) ? 'Password too short' : null,
         ),
       ],
     );

@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email             String         @unique
+  passwordHash      String         @map("password_hash")
+  emailVerified     Boolean        @default(false) @map("email_verified")
+  emailVerifiedAt   DateTime?      @map("email_verified_at") @db.Timestamptz(6)
+  failedLoginCount  Int            @default(0) @map("failed_login_count")
+  lockedUntil       DateTime?      @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt       DateTime?      @map("last_login_at") @db.Timestamptz(6)
+  passwordChangedAt DateTime?      @map("password_changed_at") @db.Timestamptz(6)
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  oneTimeTokens     OneTimeToken[]
+  profile           Profile?
+  refreshTokens     RefreshToken[]
+  sessions          Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  ip            String?
+  userAgent     String?        @map("user_agent")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastActiveAt  DateTime       @default(now()) @map("last_active_at") @db.Timestamptz(6)
+  expiresAt     DateTime       @map("expires_at") @db.Timestamptz(6)
+  revokedAt     DateTime?      @map("revoked_at") @db.Timestamptz(6)
+  revokedReason String?        @map("revoked_reason")
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model OneTimeToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      TokenType
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("one_time_tokens")
+}
+
+model RefreshToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId String?   @map("session_id") @db.Uuid
+  userId    String?   @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  session   Session?  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Profile {
+  id                 String         @id @db.Uuid
+  username           String         @unique
+  fullName           String?        @map("full_name")
+  bio                String?
+  avatarUrl          String?        @map("avatar_url")
+  avatarPublicId     String?        @map("avatar_public_id")
+  followersCount     Int            @default(0) @map("followers_count")
+  followingCount     Int            @default(0) @map("following_count")
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  following          Follow[]       @relation("Follower")
+  followers          Follow[]       @relation("Following")
+  actedNotifications Notification[] @relation("Actor")
+  notifications      Notification[] @relation("Recipient")
+  posts              Post[]
+  user               User           @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Post {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String         @map("user_id") @db.Uuid
+  title             String?
+  content           String?
+  imageUrl          String?        @map("image_url")
+  imagePublicId     String?        @map("image_public_id")
+  imageResourceType String         @default("image") @map("image_resource_type")
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  notifications     Notification[]
+  author            Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@map("posts")
+}
+
+model Follow {
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  follower    Profile  @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   Profile  @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId, createdAt(sort: Desc)])
+  @@map("followers")
+}
+
+model Notification {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  actorId   String?  @map("actor_id") @db.Uuid
+  type      String
+  postId    String?  @map("post_id") @db.Uuid
+  message   String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  actor     Profile? @relation("Actor", fields: [actorId], references: [id])
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  recipient Profile  @relation("Recipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+enum TokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}

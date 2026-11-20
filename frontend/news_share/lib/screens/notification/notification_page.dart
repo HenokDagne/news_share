@@ -11,7 +11,7 @@ import '../profile/profile_page.dart';
 import 'notification.dart';
 import '../users/user_list.dart';
 import '../auth/login.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/api_client.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -66,7 +66,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isAuthenticated = Supabase.instance.client.auth.currentUser != null;
+    final isAuthenticated = ApiClient.instance.isAuthenticated;
 
     return Scaffold(
       backgroundColor: const Color(0xFFc0c1c3),
@@ -112,79 +112,157 @@ class _NotificationPageState extends State<NotificationPage> {
                           itemCount: items.length,
                           itemBuilder: (context, index) {
                             final n = items[index];
+                            final isFollow = n.type == 'follow' || n.message.toLowerCase().contains('follow');
+
                             return Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 6,
                               ),
-                              child: Container(
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    const BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 12,
-                                      offset: Offset(0, 6),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: () async {
+                                    if (!n.isRead) {
+                                      try {
+                                        await ApiClient.instance.markNotificationRead(n.id);
+                                        setState(() {
+                                          _notificationsFuture = NotificationData.readNotifications();
+                                        });
+                                      } catch (_) {}
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
                                     ),
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.03),
-                                      blurRadius: 2,
-                                      offset: const Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    const SizedBox(width: 8),
-                                    n.buildAvatar(context, size: 50),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            height: 40,
-                                            width: double.infinity,
-                                            alignment: Alignment.topLeft,
-                                            padding: const EdgeInsets.only(
-                                              top: 8,
-                                              left: 6,
-                                            ),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.white,
-                                            ),
-                                            child: Text(
-                                              n.message,
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Container(
-                                            height: 20,
-                                            width: double.infinity,
-                                            alignment: Alignment.bottomLeft,
-                                            child: Text(
-                                              n.time,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.blue,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                    decoration: BoxDecoration(
+                                      color: n.isRead ? Colors.white : const Color(0xFFF0F5FF),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: n.isRead ? Colors.grey.shade200 : const Color(0xFFC7D7FE),
+                                        width: 1,
                                       ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.04),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            n.buildAvatar(context, size: 48),
+                                            Positioned(
+                                              bottom: -2,
+                                              right: -2,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(3),
+                                                decoration: BoxDecoration(
+                                                  color: isFollow ? const Color(0xFF3B82F6) : const Color(0xFF10B981),
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(color: Colors.white, width: 1.5),
+                                                ),
+                                                child: Icon(
+                                                  isFollow ? Icons.person_add : Icons.article,
+                                                  size: 11,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              RichText(
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                text: TextSpan(
+                                                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                                                  children: [
+                                                    if (n.actorFullName != null && n.actorFullName!.trim().isNotEmpty)
+                                                      TextSpan(
+                                                        text: '${n.actorFullName!.trim()} ',
+                                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                                      ),
+                                                    if (n.actorUsername != null && n.actorUsername!.trim().isNotEmpty)
+                                                      TextSpan(
+                                                        text: '@${n.actorUsername!.trim()} ',
+                                                        style: TextStyle(
+                                                          fontWeight: FontWeight.w600,
+                                                          color: Colors.blue.shade800,
+                                                        ),
+                                                      ),
+                                                    if (n.actorUsername != null && n.actorUsername!.trim().isNotEmpty)
+                                                      TextSpan(
+                                                        text: isFollow
+                                                            ? 'started following you'
+                                                            : 'published a new post',
+                                                        style: TextStyle(
+                                                          color: Colors.grey.shade800,
+                                                        ),
+                                                      )
+                                                    else
+                                                      TextSpan(
+                                                        text: n.message.isNotEmpty
+                                                            ? n.message
+                                                            : (isFollow
+                                                                ? 'You have a new follower!'
+                                                                : 'You have a new notification!'),
+                                                        style: TextStyle(
+                                                          fontWeight: FontWeight.w500,
+                                                          color: Colors.grey.shade900,
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.access_time,
+                                                    size: 12,
+                                                    color: Colors.grey.shade500,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    n.time,
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: Colors.grey.shade600,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  if (!n.isRead) ...[
+                                                    const SizedBox(width: 8),
+                                                    Container(
+                                                      width: 6,
+                                                      height: 6,
+                                                      decoration: const BoxDecoration(
+                                                        color: Color(0xFF3B82F6),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             );

@@ -3,15 +3,14 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  app_links
   file_selector_windows
-  firebase_auth
-  firebase_core
-  share_plus
+  local_auth_windows
   url_launcher_windows
+  share_plus
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  jni
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

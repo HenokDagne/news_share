@@ -51,7 +51,7 @@ class NewsService {
       // Deduplicate + Parse to NewsItem
       final uniqueArticles = _deduplicateArticles(allArticles);
       final newsItems = uniqueArticles
-          .map((json) => NewsItem.fromJson(json as Map<String, dynamic>))
+          .map((json) => NewsItem.fromJson(json))
           .toList();
 
       print('Returning ${newsItems.length} NewsItem objects');

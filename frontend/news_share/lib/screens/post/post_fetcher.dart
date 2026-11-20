@@ -1,22 +1,30 @@
 /*
-  Fetches public posts from Supabase,
+  Fetches public posts from NestJS backend API,
   ordering by newest first and returning an empty list on errors.
 */
 
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/api_client.dart';
 
 class PostFetcher {
-  final SupabaseClient supabase = Supabase.instance.client;
-
   /// Fetch posts ordered by creation date descending
   Future<List<Map<String, dynamic>>> fetchPosts() async {
     try {
-      final data = await supabase
-          .from('posts')
-          .select('id, user_id, title, content, image_url, created_at')
-          .order('created_at', ascending: false);
+      final posts = await ApiClient.instance.getPosts();
 
-      return List<Map<String, dynamic>>.from(data);
+      return posts.map((post) {
+        final author = post['author'] as Map<String, dynamic>?;
+        return {
+          'id': post['id'],
+          'user_id': author?['id'] ?? post['userId'],
+          'title': post['title'],
+          'content': post['content'],
+          'image_url': post['imageUrl'],
+          'imageUrl': post['imageUrl'],
+          'created_at': post['createdAt'],
+          'createdAt': post['createdAt'],
+          'author': author,
+        };
+      }).toList();
     } catch (e) {
       print('Error fetching posts: $e');
       return [];

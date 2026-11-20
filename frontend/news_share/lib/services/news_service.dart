@@ -1,83 +1,130 @@
-/*NewsService fetches Tesla + US business headlines from NewsAPI, enforcing a 20s timeout,
- requires `NEWS_API_KEY` from .env, safely casts/merges responses, deduplicates by URL,
- and returns a UI-ready `List<NewsItem>`, falling back to an empty list on errors.
- ...existing code...*/
+/*
+  NewsService aggregates posts from the local NestJS backend API (personal feed when authenticated,
+  or global posts timeline) and merges real-time external headlines from NewsAPI,
+  reading the API key and URL securely from .env.
+*/
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/news_item.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'api_client.dart';
 
 class NewsService {
-  static const Duration timeout = Duration(seconds: 20);
+  static const Duration timeout = Duration(seconds: 15);
 
+  /// Read securely from .env
   String get _apiKey => dotenv.env['NEWS_API_KEY'] ?? '';
+  String get _baseUrl =>
+      dotenv.env['NEWS_API_BASE_URL'] ?? 'https://newsapi.org/v2/everything';
 
-  /// Returns List<NewsItem> (matches your UI); supports optional query filtering
-  /// and can optionally require an authenticated user for protected contexts.
+  /// Returns List<NewsItem> combining NestJS backend posts with live third-party NewsAPI articles.
   Future<List<NewsItem>> fetchNews({
     String query = '',
     bool requireAuth = false,
   }) async {
+    final List<NewsItem> allItems = [];
+    final queryTrimmed = query.trim();
+    final queryLower = queryTrimmed.toLowerCase();
+
+    if (requireAuth && !ApiClient.instance.isAuthenticated) {
+      throw StateError('User must be authenticated to fetch news.');
+    }
+
+    final results = await Future.wait([
+      _fetchBackend(queryLower, requireAuth),
+      _fetchThirdPartyNews(queryTrimmed, queryLower),
+    ]);
+
+    allItems.addAll(results[0]);
+    allItems.addAll(results[1]);
+    return allItems;
+  }
+
+  Future<List<NewsItem>> _fetchBackend(String queryLower, bool requireAuth) async {
+    final List<NewsItem> items = [];
     try {
-      if (requireAuth && Supabase.instance.client.auth.currentUser == null) {
-        throw StateError('User must be authenticated to fetch news.');
-      }
-
-      print(
-        'Fetching multi-source news (Tesla, business, WSJ, TechCrunch, Apple)...',
-      );
-
-      final apiKey = _apiKey;
-      if (apiKey.isEmpty) {
-        throw StateError(
-          'NEWS_API_KEY is missing. Ensure .env is loaded before using NewsService.',
-        );
-      }
-
-      final urls = [
-        'https://newsapi.org/v2/everything?domains=wsj.com&apiKey=$apiKey',
-        'https://newsapi.org/v2/top-headlines?sources=techcrunch&apiKey=$apiKey',
-        'https://newsapi.org/v2/top-headlines?country=us&category=business&apiKey=$apiKey',
-        'https://newsapi.org/v2/everything?q=tesla&from=2025-12-15&sortBy=publishedAt&apiKey=$apiKey',
-        'https://newsapi.org/v2/everything?q=apple&from=2026-01-14&to=2026-01-14&sortBy=popularity&apiKey=$apiKey',
-      ];
-
-      final responses = await Future.wait(
-        urls.map((u) => http.get(Uri.parse(u)).timeout(timeout)),
-      );
-
-      List<Map<String, dynamic>> allArticles = [];
-
-      for (int i = 0; i < responses.length; i++) {
-        if (responses[i].statusCode == 200) {
-          final data = jsonDecode(responses[i].body);
-          if (data is Map<String, dynamic>) {
-            final articles = data['articles'];
-            if (articles is List) {
-              allArticles.addAll(_safeCastArticles(articles));
-            }
-          }
+      final List<Map<String, dynamic>> backendPosts;
+      if (ApiClient.instance.isAuthenticated) {
+        final feedPosts = await ApiClient.instance.getFeed(limit: 50);
+        if (feedPosts.isNotEmpty) {
+          backendPosts = feedPosts;
         } else {
-          print('Source ${i + 1} returned status ${responses[i].statusCode}');
+          backendPosts = await ApiClient.instance.getPosts(limit: 50);
         }
+      } else {
+        backendPosts = await ApiClient.instance.getPosts(limit: 50);
       }
 
-      // Deduplicate + Parse to NewsItem
-      final uniqueArticles = _deduplicateArticles(allArticles);
-      final queryLower = query.trim().toLowerCase();
-      final newsItems = uniqueArticles
-          .map((json) => NewsItem.fromJson(json as Map<String, dynamic>))
+      final postItems = backendPosts
+          .map((p) => NewsItem.fromPostJson(p))
           .where((item) => _matchesQuery(item, queryLower))
           .toList();
 
-      print('Returning ${newsItems.length} NewsItem objects');
-      return newsItems;
-    } catch (e, stack) {
-      print(' NewsService ERROR: $e\n$stack');
-      return []; // Empty list fallback
+      items.addAll(postItems);
+      debugPrint('Fetched ${postItems.length} posts from NestJS backend');
+    } catch (e) {
+      debugPrint('Backend posts fetch notice: $e');
     }
+    return items;
+  }
+
+  Future<List<NewsItem>> _fetchThirdPartyNews(String queryTrimmed, String queryLower) async {
+    final List<NewsItem> items = [];
+    final apiKey = _apiKey;
+    final baseUrl = _baseUrl;
+
+    if (apiKey.isEmpty || baseUrl.isEmpty) return items;
+
+    try {
+      final topic = queryTrimmed.isNotEmpty ? queryTrimmed : 'apple';
+      final now = DateTime.now();
+      final yesterday = now.subtract(const Duration(days: 1));
+      final fromDate =
+          "${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}";
+      final toDate =
+          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+
+      final uri = Uri.parse(baseUrl).replace(
+        queryParameters: {
+          'q': topic,
+          'from': fromDate,
+          'to': toDate,
+          'sortBy': 'popularity',
+          'pageSize': '20',
+          'apiKey': apiKey,
+        },
+      );
+
+      debugPrint(
+        'Fetching third-party news from NewsAPI: ${uri.origin}${uri.path}?q=$topic',
+      );
+
+      final response = await http.get(uri).timeout(timeout);
+
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic> && data['articles'] is List) {
+          final articles = _safeCastArticles(data['articles'] as List);
+          final uniqueArticles = _deduplicateArticles(articles);
+          final newsApiItems = uniqueArticles
+              .map((json) => NewsItem.fromJson(json))
+              .where((item) => _matchesQuery(item, queryLower))
+              .toList();
+
+          items.addAll(newsApiItems);
+          debugPrint(
+            'Fetched ${newsApiItems.length} real news articles from NewsAPI',
+          );
+        }
+      } else {
+        debugPrint('NewsAPI returned status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('NewsAPI fetch error: $e');
+    }
+    return items;
   }
 
   List<Map<String, dynamic>> _safeCastArticles(List articles) {

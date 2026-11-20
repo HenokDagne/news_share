@@ -1,37 +1,24 @@
-// lib/user/follow_handler.dart
 /*
-  Handles Supabase follow/unfollow operations via RPC calls,
+  Handles follow/unfollow operations via the NestJS REST API,
   checks follow status, and can fetch follower/following counts.
 */
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/api_client.dart';
 
 class FollowHandler {
-  final SupabaseClient supabase = Supabase.instance.client;
-
-  /// Follow the target user by calling RPC 'follow_user'
+  /// Follow the target user
   Future<void> follow(String targetUserId) async {
     try {
-      await supabase.rpc(
-        'follow_user',
-        params: {'target_user': targetUserId}, // matches RPC argument
-      );
-      // Optional: print success
-      print('Followed user $targetUserId successfully.');
+      await ApiClient.instance.follow(targetUserId);
     } catch (e, stack) {
       print('Follow error: $e');
       print('Stack trace: $stack');
     }
   }
 
-  /// Unfollow the target user by calling RPC 'unfollow_user'
+  /// Unfollow the target user
   Future<void> unfollow(String targetUserId) async {
     try {
-      await supabase.rpc(
-        'unfollow_user',
-        params: {'target_user': targetUserId}, // matches RPC argument
-      );
-      // Optional: print success
-      print('Unfollowed user $targetUserId successfully.');
+      await ApiClient.instance.unfollow(targetUserId);
     } catch (e, stack) {
       print('Unfollow error: $e');
       print('Stack trace: $stack');
@@ -41,19 +28,12 @@ class FollowHandler {
   /// Check if the currently authenticated user follows the target user
   Future<bool> isFollowing(String targetUserId) async {
     try {
-      final currentUserId = supabase.auth.currentUser?.id;
-      if (currentUserId == null) {
+      if (!ApiClient.instance.isAuthenticated) {
         return false;
       }
 
-      final data = await supabase
-          .from('followers')
-          .select()
-          .eq('follower_id', currentUserId)
-          .eq('following_id', targetUserId)
-          .maybeSingle();
-
-      return data != null;
+      final status = await ApiClient.instance.getFollowStatus(targetUserId);
+      return status['isFollowing'] == true;
     } catch (e, stack) {
       print('isFollowing error: $e');
       print('Stack trace: $stack');
@@ -61,18 +41,13 @@ class FollowHandler {
     }
   }
 
-  /// Optional: fetch the number of followers/following for a specific user
+  /// Fetch the number of followers/following for a specific user
   Future<Map<String, int>> fetchFollowCounts(String userId) async {
     try {
-      final data = await supabase
-          .from('profiles')
-          .select('followers_count, following_count')
-          .eq('id', userId)
-          .single();
-
+      final data = await ApiClient.instance.getUserProfile(userId);
       return {
-        'followers_count': data['followers_count'] ?? 0,
-        'following_count': data['following_count'] ?? 0,
+        'followers_count': (data['followersCount'] ?? data['followers_count'] ?? 0) as int,
+        'following_count': (data['followingCount'] ?? data['following_count'] ?? 0) as int,
       };
     } catch (e, stack) {
       print('fetchFollowCounts error: $e');

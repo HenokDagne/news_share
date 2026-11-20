@@ -1,18 +1,18 @@
 // lib/screens/auth/login.dart
 /*
-  Renders the login UI with email/password and Google auth,
-  wires submit handlers, and shows a logout button when already signed in.
+  Renders the login UI with email/password, native Android fingerprint biometric authentication,
+  account recovery, and Google auth. Wires submit handlers, and shows a logout button when already signed in.
 */
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
+import '../../services/api_client.dart';
+import '../../services/biometric_service.dart';
 import 'widgets/login_top_bar.dart';
 import 'widgets/login_input.dart';
 import 'widgets/login_button.dart';
 import 'widgets/login_footer.dart';
 import 'login_handler.dart';
 import 'google_login_handler.dart';
-import 'logout.dart';  // Logout handler
+import 'logout.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,11 +25,26 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _handler = LoginHandler();
   final _googleHandler = GoogleLoginHandler();
-  final _logoutHandler = LogoutHandler(); // your logout handler
+  final _logoutHandler = LogoutHandler();
   bool isGoogleLoading = false;
+  bool isBiometricSupported = false;
 
-  // ✅ Helper getter to check if user is logged in
-  bool get isLoggedIn => Supabase.instance.client.auth.currentUser != null;
+  bool get isLoggedIn => ApiClient.instance.isAuthenticated;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometrics();
+  }
+
+  Future<void> _checkBiometrics() async {
+    final supported = await BiometricService.instance.canCheckBiometrics();
+    if (mounted) {
+      setState(() {
+        isBiometricSupported = supported;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,14 +66,61 @@ class _LoginPageState extends State<LoginPage> {
                   emailController: _handler.emailController,
                   passwordController: _handler.passwordController,
                 ),
-                const SizedBox(height: 32),
+
+                // Forgot Password Link (Section 1.2 Account Recovery)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => _handler.showForgotPasswordDialog(context),
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
 
                 // Email/Password Login Button
                 LoginButton(
                   formKey: _formKey,
                   onSubmit: () => _handler.handleLoginSubmit(_formKey, context),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
+
+                // Native Android Biometric / Fingerprint Authentication Button
+                if (isBiometricSupported) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue.shade700,
+                        side: BorderSide(color: Colors.blue.shade300, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.fingerprint,
+                        size: 26,
+                        color: Colors.blue,
+                      ),
+                      label: const Text(
+                        'Sign in with Fingerprint',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () => _handler.handleBiometricLogin(context),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
 
                 // Google Login Button
                 SizedBox(
@@ -94,7 +156,16 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                     onPressed: isGoogleLoading
                         ? null
-                        : () => _googleHandler.handleGoogleLogin(context),
+                        : () async {
+                            setState(() => isGoogleLoading = true);
+                            try {
+                              await _googleHandler.handleGoogleLogin(context);
+                            } finally {
+                              if (mounted) {
+                                setState(() => isGoogleLoading = false);
+                              }
+                            }
+                          },
                   ),
                 ),
                 const SizedBox(height: 24),

@@ -4,7 +4,7 @@
 */
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/api_client.dart';
 import 'user_model.dart';
 import 'follow_handler.dart';
 
@@ -65,7 +65,7 @@ class _UserCardState extends State<UserCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isAuthenticated = Supabase.instance.client.auth.currentUser != null;
+    final isAuthenticated = ApiClient.instance.isAuthenticated;
 
     return Card(
       color: Colors.white,

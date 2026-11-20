@@ -4,12 +4,10 @@
 */
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
+import '../../services/api_client.dart';
 import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
 import '../auth/login.dart';
-import '../auth/logout.dart';
 
 class TopAppBar extends StatefulWidget {
   const TopAppBar({super.key});
@@ -20,45 +18,46 @@ class TopAppBar extends StatefulWidget {
 
 class _TopAppBarState extends State<TopAppBar> {
   String? avatarUrl;
-
-  final SupabaseClient supabase = Supabase.instance.client;
+  int unreadNotifications = 0;
 
   @override
   void initState() {
     super.initState();
-    _fetchAvatar();
+    _fetchUserData();
   }
 
-  Future<void> _fetchAvatar() async {
+  Future<void> _fetchUserData() async {
     try {
-      final user = supabase.auth.currentUser;
-      if (user == null) return;
-
-      final data = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('id', user.id)
-          .single();
+      if (!ApiClient.instance.isAuthenticated) return;
 
       setState(() {
-        avatarUrl = data['avatar_url'];
+        avatarUrl = ApiClient.instance.currentUser?.avatarUrl;
       });
+
+      final count = await ApiClient.instance.getUnreadNotificationCount();
+      if (mounted) {
+        setState(() {
+          unreadNotifications = count;
+        });
+      }
     } catch (e) {
-      debugPrint('Avatar fetch error: $e');
+      debugPrint('TopAppBar fetch error: $e');
     }
   }
 
   // ---------------- LOGOUT FUNCTION ----------------
   Future<void> _logout() async {
     try {
-      await supabase.auth.signOut();
-      setState(() {
-        avatarUrl = null;
-      });
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
+      await ApiClient.instance.logout();
+      if (mounted) {
+        setState(() {
+          avatarUrl = null;
+        });
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      }
     } catch (e) {
       debugPrint('Logout error: $e');
     }
@@ -66,7 +65,7 @@ class _TopAppBarState extends State<TopAppBar> {
 
   @override
   Widget build(BuildContext context) {
-    final user = supabase.auth.currentUser;
+    final isLoggedIn = ApiClient.instance.isAuthenticated;
 
     return Container(
       color: Colors.white,
@@ -88,7 +87,7 @@ class _TopAppBarState extends State<TopAppBar> {
             Row(
               children: [
                 // Notifications
-                if (user != null)
+                if (isLoggedIn)
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
@@ -103,28 +102,29 @@ class _TopAppBarState extends State<TopAppBar> {
                         },
                         icon: const Icon(Icons.notifications_none),
                       ),
-                      Positioned(
-                        right: 6,
-                        top: 6,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Text(
-                            '5',
-                            style: TextStyle(color: Colors.white, fontSize: 10),
+                      if (unreadNotifications > 0)
+                        Positioned(
+                          right: 6,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '$unreadNotifications',
+                              style: const TextStyle(color: Colors.white, fontSize: 10),
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
 
                 const SizedBox(width: 8),
 
                 // Profile avatar (only if logged in)
-                if (user != null)
+                if (isLoggedIn)
                   GestureDetector(
                     onTap: () {
                       Navigator.pushReplacement(
@@ -161,11 +161,9 @@ class _TopAppBarState extends State<TopAppBar> {
                 // LOGIN / LOGOUT BUTTON
                 GestureDetector(
                   onTap: () {
-                    if (user != null) {
-                      // Logged in → logout
+                    if (isLoggedIn) {
                       _logout();
                     } else {
-                      // Not logged in → navigate to login page
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -176,8 +174,8 @@ class _TopAppBarState extends State<TopAppBar> {
                     radius: 20,
                     backgroundColor: Colors.transparent,
                     child: Icon(
-                      user != null ? Icons.logout : Icons.login,
-                      color: user != null ? Colors.red : Colors.black,
+                      isLoggedIn ? Icons.logout : Icons.login,
+                      color: isLoggedIn ? Colors.red : Colors.black,
                       size: 20,
                     ),
                   ),

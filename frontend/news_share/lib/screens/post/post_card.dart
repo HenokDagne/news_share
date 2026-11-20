@@ -5,7 +5,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/api_client.dart';
 import 'delete_post.dart';
 
 class PostCard extends StatefulWidget {
@@ -148,7 +148,7 @@ class _PostCardState extends State<PostCard> {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final currentUserId = ApiClient.instance.currentUserId;
     final canManage =
         currentUserId != null && currentUserId == widget.postUserId;
 

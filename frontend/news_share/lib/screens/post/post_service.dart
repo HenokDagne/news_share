@@ -1,76 +1,55 @@
 /*
-  Provides Supabase-backed post utilities: uploads images to the "posts" bucket
-  and creates posts in the "posts" table with optional title, content, and image URL.
+  Provides backend REST API post utilities:
+  creates posts with title, content, and optional image file via multipart request.
 */
 
 import 'dart:io';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/api_client.dart';
 
 class PostService {
-  final SupabaseClient supabase = Supabase.instance.client;
+  String? lastError;
 
-  /// Upload image to Supabase Storage 'posts' bucket and return public URL
- Future<String?> uploadImage(File file) async {
-  try {
-    final fileName =
-        '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
-
-    print('Uploading file: $fileName');
-
-    // Upload file to Supabase Storage bucket 'posts'
-    await supabase.storage
-        .from('posts')
-        .upload(fileName, file, fileOptions: const FileOptions(cacheControl: '3600'));
-
-    print('File uploaded successfully.');
-
-    // Generate public URL
-    final publicUrl = supabase.storage.from('posts').getPublicUrl(fileName);
-
-    print('Public URL: $publicUrl');
-
-    return publicUrl; // Store this in the 'posts' table
-  } on StorageException catch (e) {
-    // Only use message
-    print('Supabase StorageException: ${e.message}');
-    return null;
-  } catch (e, stackTrace) {
-    print('Unexpected error uploading image: $e');
-    print(stackTrace);
-    return null;
-  }
-}
-
-  /// Create a post in Supabase 'posts' table
+  /// Create a post with optional title, content, and local image File
   Future<bool> createPost({
     String? title,
     String? content,
     String? imageUrl,
+    File? imageFile,
   }) async {
     try {
-      final user = supabase.auth.currentUser;
-      if (user == null) return false;
-
-      final data = {
-        'user_id': user.id,
-        if (title != null) 'title': title,
-        if (content != null) 'content': content,
-        if (imageUrl != null) 'image_url': imageUrl,
-      };
-
-      final response = await supabase.from('posts').insert(data).select();
-
-      if (response == null || response.isEmpty) {
-        print('Failed to create post in table.');
+      lastError = null;
+      if (!ApiClient.instance.isAuthenticated) {
+        lastError = 'You must be logged in to create a post';
         return false;
       }
 
-      print('Post created: ${response[0]}');
+      // If an image file path was passed as imageUrl (or as imageFile)
+      File? uploadFile = imageFile;
+      if (uploadFile == null && imageUrl != null && !imageUrl.startsWith('http')) {
+        uploadFile = File(imageUrl);
+      }
+
+      await ApiClient.instance.createPost(
+        title: title,
+        content: content,
+        image: uploadFile,
+      );
+
       return true;
+    } on ApiException catch (e) {
+      lastError = e.message;
+      print('Error creating post: ${e.message}');
+      return false;
     } catch (e, stackTrace) {
+      lastError = e.toString();
       print('Error creating post: $e');
       print(stackTrace);
       return false;
     }
+  }
+
+  /// For compatibility if photo picker returns local path
+  Future<String?> uploadImage(File file) async {
+    return file.path;
   }
 }

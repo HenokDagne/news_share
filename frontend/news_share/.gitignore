@@ -1,0 +1,7 @@
+# Environment variables & secrets (NEVER commit to GitHub)
+.env
+.env.*
+*.env
+*.env.*
+assets/.env
+assets/.env.*

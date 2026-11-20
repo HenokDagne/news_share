@@ -3,7 +3,6 @@
   source info, and supports tap handling for navigation or external links.
 */
 
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import '../../models/news_item.dart';
 import 'package:share_plus/share_plus.dart';
@@ -31,20 +30,8 @@ class _NewsCardState extends State<NewsCard> {
     await _shareGeneric(shareText);
   }
 
-  Widget _shareItem({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.blue),
-      title: Text(label),
-      onTap: onTap,
-    );
-  }
-
   Future<void> _shareGeneric(String text) async {
-    await Share.share(text);
+    await SharePlus.instance.share(ShareParams(text: text));
   }
 
   bool _isExpanded = false;
@@ -275,7 +262,7 @@ class _NewsCardState extends State<NewsCard> {
                       final item = widget.item;
                       if (item != null) {
                         final shareText =
-                            '${item.title}\n${item.subtitle}\n${item.imageUrl ?? ''}';
+                            '${item.title}\n${item.subtitle}\n${item.imageUrl}';
                         _shareDirect(context, shareText.trim());
                       }
                     },

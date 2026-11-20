@@ -38,15 +38,17 @@ class _HomePageState extends State<HomePage> {
 
   Future<List<NewsItem>> _loadNews({String query = ''}) async {
     try {
-      return await _newsService.fetchNews(query: query, requireAuth: false);
+      final items = await _newsService.fetchNews(query: query, requireAuth: false);
+      if (items.isNotEmpty) return items;
+      return await _loadLocalNews(query: query);
     } catch (e) {
-      print('API failed, using local fallback: $e');
+      debugPrint('API failed, using local fallback: $e');
       return _loadLocalNews(query: query);
     }
   }
 
   Future<List<NewsItem>> _loadLocalNews({String query = ''}) async {
-    final jsonStr = await rootBundle.loadString('assets/news/share.json');
+    final jsonStr = await rootBundle.loadString('assets/news_share.json');
     final List<dynamic> data = json.decode(jsonStr) as List<dynamic>;
     final items = data
         .map((e) => NewsItem.fromJson(e as Map<String, dynamic>))
@@ -151,9 +153,11 @@ class _HomePageState extends State<HomePage> {
                   }
                   final items = snapshot.data ?? [];
                   return RefreshIndicator(
-                    onRefresh: () => Future.value(
-                      newsFuture = _loadNews(query: _searchQuery),
-                    ),
+                    onRefresh: () async {
+                      final updated = _loadNews(query: _searchQuery);
+                      setState(() => newsFuture = updated);
+                      await updated;
+                    },
                     child: ListView.builder(
                       padding: const EdgeInsets.only(top: 8),
                       itemCount: items.length,

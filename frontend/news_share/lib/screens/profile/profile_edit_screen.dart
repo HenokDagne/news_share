@@ -1,12 +1,12 @@
 /*
-  Loads the current user's profile from Supabase, lets them edit username/full name/bio,
-  supports picking a temporary avatar preview, saves updates (and avatar) back to Supabase,
+  Loads the current user's profile from NestJS API, lets them edit username/full name/bio,
+  supports picking a temporary avatar preview, saves updates (and avatar) back,
   and surfaces success/error feedback via SnackBars.
 */
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
+import '../../services/api_client.dart';
 import 'upload_avatar.dart';
 
 class ProfileEditScreen extends StatefulWidget {
@@ -17,12 +17,11 @@ class ProfileEditScreen extends StatefulWidget {
 }
 
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
-  final supabase = Supabase.instance.client;
   final _usernameController = TextEditingController();
   final _fullNameController = TextEditingController();
   final _bioController = TextEditingController();
   bool _isLoading = true;
-  Map<String, dynamic>? _profile;
+  CurrentUserModel? _profile;
 
   // Temporary avatar file
   File? _tempAvatar;
@@ -36,81 +35,86 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   Future<void> _loadProfile() async {
     setState(() => _isLoading = true);
     try {
-      final userId = supabase.auth.currentUser!.id;
-      final data = await supabase
-          .from('profiles')
-          .select()
-          .eq('id', userId)
-          .single();
+      final user = await ApiClient.instance.getMe();
 
-      setState(() {
-        _profile = data;
-        _usernameController.text = data['username'] ?? '';
-        _fullNameController.text = data['full_name'] ?? '';
-        _bioController.text = data['bio'] ?? '';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _profile = user;
+          _usernameController.text = user.username;
+          _fullNameController.text = user.fullName ?? '';
+          _bioController.text = user.bio ?? '';
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
-      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _updateProfile() async {
-    if (_usernameController.text.trim().length < 3) {
+    final username = _usernameController.text.trim();
+    if (username.length < 3 || username.length > 20) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Username must be 3+ characters')),
+        const SnackBar(content: Text('Username must be 3-20 characters')),
       );
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final userId = supabase.auth.currentUser!.id;
+      await ApiClient.instance.updateProfile(
+        username: username,
+        fullName: _fullNameController.text.trim(),
+        bio: _bioController.text.trim(),
+      );
 
-      // Update username, full_name, bio
-      await supabase.from('profiles').update({
-        'username': _usernameController.text.trim(),
-        'full_name': _fullNameController.text.trim().isEmpty
-            ? null
-            : _fullNameController.text.trim(),
-        'bio': _bioController.text.trim().isEmpty
-            ? null
-            : _bioController.text.trim(),
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', userId);
-
-      // Upload temporary avatar if exists
+      // Upload temporary avatar if chosen
       if (_tempAvatar != null) {
-        await saveAvatarToSupabase(
-          context: context,
-          supabase: supabase,
-          file: _tempAvatar!,
-          reloadProfile: _loadProfile,
-        );
+        await ApiClient.instance.uploadAvatar(_tempAvatar!);
         _tempAvatar = null;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Profile updated successfully!')));
-      Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully!')),
+        );
+        Navigator.pop(context);
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Update failed: ${e.message}')));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Update failed: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Update failed: $e')));
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _pickTempAvatar() async {
     final file = await pickTempAvatar(context);
-    if (file != null) setState(() => _tempAvatar = file);
+    if (file != null && mounted) {
+      setState(() => _tempAvatar = file);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final avatarUrl = _profile?.avatarUrl;
 
     return Scaffold(
       appBar: AppBar(
@@ -142,11 +146,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     backgroundColor: const Color(0xFFF0F0F0),
                     backgroundImage: _tempAvatar != null
                         ? FileImage(_tempAvatar!) as ImageProvider
-                        : (_profile?['avatar_url']?.isNotEmpty == true
-                            ? NetworkImage(_profile!['avatar_url'])
+                        : (avatarUrl != null && avatarUrl.isNotEmpty
+                            ? NetworkImage(avatarUrl)
                             : null),
-                    child: _tempAvatar == null &&
-                            (_profile?['avatar_url']?.isEmpty ?? true)
+                    child: _tempAvatar == null && (avatarUrl == null || avatarUrl.isEmpty)
                         ? const Icon(Icons.person, size: 55, color: Colors.grey)
                         : null,
                   ),

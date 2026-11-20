@@ -1,10 +1,10 @@
 /*
-  Displays the current user profile from Supabase, handles loading/error states,
+  Displays the current user profile from local REST backend API, handles loading/error states,
   lets users edit their profile, and includes bottom navigation across app sections.
 */
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/api_client.dart';
 import '../home/top_app_bar.dart';
 import '../home/bottom_nav.dart';
 import '../home/home_page.dart';
@@ -23,11 +23,9 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final supabase = Supabase.instance.client;
-
   int _currentIndex = 4;
   bool _isLoading = true;
-  Map<String, dynamic>? _profile;
+  CurrentUserModel? _profile;
 
   @override
   void initState() {
@@ -37,8 +35,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadProfile() async {
     try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) {
+      if (!ApiClient.instance.isAuthenticated) {
         setState(() {
           _profile = null;
           _isLoading = false;
@@ -46,20 +43,20 @@ class _ProfilePageState extends State<ProfilePage> {
         return;
       }
 
-      final data = await supabase
-          .from('profiles')
-          .select()
-          .eq('id', userId)
-          .single();
-      setState(() {
-        _profile = data;
-        _isLoading = false;
-      });
+      final data = await ApiClient.instance.getMe();
+      if (mounted) {
+        setState(() {
+          _profile = data;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Profile load error: $e')));
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Profile load error: $e')));
+      }
     }
   }
 
@@ -97,7 +94,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _editProfile() {
-    if (supabase.auth.currentUser == null) {
+    if (!ApiClient.instance.isAuthenticated) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -113,7 +110,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = supabase.auth.currentUser;
+    final currentUser = ApiClient.instance.currentUser;
 
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -210,21 +207,20 @@ class _ProfilePageState extends State<ProfilePage> {
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
-                // This empty container just pushes content down
                 Container(height: 0),
                 Positioned(
                   top: -60,
                   child: Container(
-                    padding: const EdgeInsets.all(5), // thickness of the ring
-                    decoration: BoxDecoration(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         colors: [
-                          Color(0xFF833AB4), // purple
-                          Color(0xFFF77737), // orange
-                          Color(0xFFE1306C), // pink
-                          Color(0xFFFD1D1D), // red
-                          Color(0xFFFCB045), // yellow
+                          Color(0xFF833AB4),
+                          Color(0xFFF77737),
+                          Color(0xFFE1306C),
+                          Color(0xFFFD1D1D),
+                          Color(0xFFFCB045),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -232,10 +228,10 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     child: CircleAvatar(
                       radius: 60,
-                      backgroundImage: profile['avatar_url']?.isNotEmpty == true
-                          ? NetworkImage(profile['avatar_url'])
+                      backgroundImage: profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty
+                          ? NetworkImage(profile.avatarUrl!)
                           : null,
-                      child: profile['avatar_url']?.isNotEmpty != true
+                      child: profile.avatarUrl == null || profile.avatarUrl!.isEmpty
                           ? const Icon(Icons.person, size: 60)
                           : null,
                       backgroundColor: Colors.white,
@@ -246,18 +242,20 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 70),
             Text(
-              profile['full_name'] ?? 'User',
+              profile.fullName != null && profile.fullName!.isNotEmpty
+                  ? profile.fullName!
+                  : profile.username,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
             Text(
-              profile['bio'] ?? '',
+              profile.bio ?? '',
               style: const TextStyle(fontSize: 16, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             // Followers / Following stats
-            FollowStatsBox(userId: currentUser.id),
+            FollowStatsBox(userId: profile.id),
             const SizedBox(height: 16),
             // Edit profile button
             ElevatedButton(
@@ -276,7 +274,6 @@ class _ProfilePageState extends State<ProfilePage> {
               child: const Text('Edit Profile', style: TextStyle(fontSize: 16)),
             ),
             const SizedBox(height: 24),
-            // Future sections: posts, friends, photos
           ],
         ),
       ),

@@ -69,12 +69,16 @@ frontend/news_share/web/manifest.json
 *.sqlite
 *.sqlite3
 
-# Ignore all .env files anywhere
+# Ignore all .env files anywhere (NEVER commit to GitHub)
 .env
+.env.*
 *.env
+*.env.*
+**/.env
+**/.env.*
+**/*.env
+**/*.env.*
 backend/news_share_api/.env
-
-!frontend/news_share/.env.example
 
 # Temporary files
 *.tmp
@@ -95,3 +99,4 @@ generated_plugin_registrant.dart
 *.class
 migrate_working_dir/
 frontend/news_share/lib/firebase_options.dart
+

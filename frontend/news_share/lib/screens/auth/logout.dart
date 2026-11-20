@@ -1,40 +1,43 @@
-// lib/handlers/logout_handler.dart
-// LOGOUT ONLY - No login functionality
-// Handles sign-out for Supabase and Google, shows a success/failure SnackBar, and guards UI ops with context.mounted.
+// Handles sign-out for local backend REST API, shows a success/failure SnackBar, and guards UI ops with context.mounted.
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../services/api_client.dart';
+import 'login.dart';
 
 class LogoutHandler {
-  final supabase = Supabase.instance.client;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: dotenv.env['GOOGLE_CLIENT_ID'] ?? dotenv.env['client_ID'],
+  );
 
   Future<void> handleLogout(BuildContext context) async {
     try {
-      final userEmail = supabase.auth.currentUser?.email;  
-      print('Logging out $userEmail...');
+      final userEmail = ApiClient.instance.currentUserEmail;
 
-      await supabase.auth.signOut();
-      await _googleSignIn.signOut();
-
-      print(' Logout complete for $userEmail');
+      await ApiClient.instance.logout();
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Logged out successfully, ${userEmail ?? "User"}!'),  
+            content: Text('Logged out successfully, ${userEmail ?? "User"}!'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
         );
 
-
-        
-
-       
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
       }
     } catch (e) {
-      _showError(context, 'Logout failed: $e');
+      if (context.mounted) {
+        _showError(context, 'Logout failed: $e');
+      }
     }
   }
 
