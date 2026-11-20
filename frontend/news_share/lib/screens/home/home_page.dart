@@ -244,6 +244,7 @@ class _HomePageState extends State<HomePage> {
                     return NewsCard(
                       key: ValueKey(item.id ?? '$index-${item.title}'),
                       item: item,
+                      onSearchTap: () => setState(() => _isSearchVisible = true),
                       onHidePost: () {
                         setState(() {
                           items.removeAt(index);

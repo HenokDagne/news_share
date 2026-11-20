@@ -136,6 +136,7 @@ model User {
   activities        UserActivity[]
   notInterested     NotInterested[]
   savedPosts        SavedPost[]
+  likes             Like[]
   reportsFiled      Report[]
   casesAgainst      ReportCase[]       @relation("CaseTargetUser")
   actionsAgainst    ModerationAction[] @relation("ActionTargetUser")
@@ -209,6 +210,7 @@ model Profile {
   actedNotifications Notification[] @relation("Actor")
   notifications      Notification[] @relation("Recipient")
   posts              Post[]
+  comments           Comment[]
   user               User           @relation(fields: [id], references: [id], onDelete: Cascade)
 
   @@map("profiles")
@@ -232,6 +234,8 @@ model Post {
   author            Profile         @relation(fields: [userId], references: [id], onDelete: Cascade)
   notInterestedBy   NotInterested[]
   savedBy           SavedPost[]
+  likes             Like[]
+  comments          Comment[]
   cases             ReportCase[]
 
   @@index([userId, createdAt(sort: Desc)])
@@ -521,6 +525,36 @@ model SavedPost {
   @@id([userId, postId])
   @@index([userId, createdAt(sort: Desc)])
   @@map("saved_posts")
+}
+
+model Like {
+  userId    String   @map("user_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("likes")
+}
+
+model Comment {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  content   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt(sort: Asc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("comments")
 }
 
 model UserActivity {

@@ -1,6 +1,6 @@
 /*
-  Displays the current user profile from local REST backend API, handles loading/error states,
-  lets users edit their profile, and includes bottom navigation across app sections.
+  ProfilePage displays user profile details, follow stats, action buttons (Edit or Follow/Unfollow),
+  and published posts. Works for both current authenticated user and external publishers.
 */
 
 import 'package:flutter/material.dart';
@@ -16,7 +16,9 @@ import 'follow_stats_box.dart';
 import '../auth/login.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final String? userId;
+
+  const ProfilePage({super.key, this.userId});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -25,37 +27,121 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   int _currentIndex = 4;
   bool _isLoading = true;
-  CurrentUserModel? _profile;
+  Map<String, dynamic>? _targetProfile;
+  CurrentUserModel? _myProfile;
+  bool _isFollowing = false;
+  bool _isFollowingLoading = false;
+  List<Map<String, dynamic>> _userPosts = [];
+  bool _isLoadingPosts = true;
+
+  bool get _isOwnProfile {
+    final myId = ApiClient.instance.currentUserId;
+    return widget.userId == null || (myId != null && myId == widget.userId);
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _loadProfileData();
   }
 
-  Future<void> _loadProfile() async {
+  Future<void> _loadProfileData() async {
+    setState(() => _isLoading = true);
     try {
-      if (!ApiClient.instance.isAuthenticated) {
-        setState(() {
-          _profile = null;
-          _isLoading = false;
-        });
-        return;
-      }
+      if (_isOwnProfile) {
+        if (!ApiClient.instance.isAuthenticated) {
+          setState(() {
+            _myProfile = null;
+            _isLoading = false;
+          });
+          return;
+        }
+        final me = await ApiClient.instance.getMe();
+        final myId = ApiClient.instance.currentUserId;
+        List<Map<String, dynamic>> posts = [];
+        if (myId != null) {
+          try {
+            posts = await ApiClient.instance.getUserPosts(myId);
+          } catch (_) {}
+        }
+        if (mounted) {
+          setState(() {
+            _myProfile = me;
+            _userPosts = posts;
+            _isLoading = false;
+            _isLoadingPosts = false;
+          });
+        }
+      } else {
+        final profile = await ApiClient.instance.getUserProfile(widget.userId!);
+        bool following = false;
+        if (ApiClient.instance.isAuthenticated) {
+          try {
+            final status = await ApiClient.instance.getFollowStatus(widget.userId!);
+            following = status['isFollowing'] == true;
+          } catch (_) {}
+        }
+        List<Map<String, dynamic>> posts = [];
+        try {
+          posts = await ApiClient.instance.getUserPosts(widget.userId!);
+        } catch (_) {}
 
-      final data = await ApiClient.instance.getMe();
-      if (mounted) {
-        setState(() {
-          _profile = data;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _targetProfile = profile;
+            _isFollowing = following;
+            _userPosts = posts;
+            _isLoading = false;
+            _isLoadingPosts = false;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Profile load error: $e')));
+        setState(() {
+          _isLoading = false;
+          _isLoadingPosts = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load profile: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    if (!ApiClient.instance.isAuthenticated) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage()));
+      return;
+    }
+
+    final targetId = widget.userId;
+    if (targetId == null) return;
+
+    final next = !_isFollowing;
+    setState(() {
+      _isFollowing = next;
+      _isFollowingLoading = true;
+    });
+
+    try {
+      if (next) {
+        await ApiClient.instance.follow(targetId);
+      } else {
+        await ApiClient.instance.unfollow(targetId);
+      }
+      if (mounted) {
+        setState(() => _isFollowingLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isFollowing = !next;
+          _isFollowingLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Follow update failed: $e')),
+        );
       }
     }
   }
@@ -105,18 +191,19 @@ class _ProfilePageState extends State<ProfilePage> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ProfileEditScreen()),
-    ).then((_) => _loadProfile());
+    ).then((_) => _loadProfileData());
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = ApiClient.instance.currentUser;
-
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
-    if (currentUser == null) {
+    if (_isOwnProfile && !ApiClient.instance.isAuthenticated) {
       return Scaffold(
         backgroundColor: Colors.grey[100],
         appBar: const PreferredSize(
@@ -129,7 +216,7 @@ class _ProfilePageState extends State<ProfilePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.person_outline, size: 72),
+                const Icon(Icons.person_outline, size: 72, color: Colors.grey),
                 const SizedBox(height: 16),
                 const Text(
                   'Guest Profile',
@@ -137,8 +224,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Sign in to edit your profile, manage your posts, and view personal activity.',
+                  'Sign in to edit your profile, interact with news, and build your follower network.',
                   textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
@@ -148,6 +236,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       MaterialPageRoute(builder: (_) => const LoginPage()),
                     );
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  ),
                   child: const Text('Sign In'),
                 ),
               ],
@@ -161,126 +254,286 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    if (_profile == null) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.person_off, size: 64),
-              const SizedBox(height: 16),
-              const Text('Profile not found'),
-              ElevatedButton(
-                onPressed: _loadProfile,
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      );
+    final String displayName;
+    final String username;
+    final String? bio;
+    final String? avatarUrl;
+    final String profileUserId;
+
+    if (_isOwnProfile) {
+      final me = _myProfile ?? ApiClient.instance.currentUser;
+      displayName = (me?.fullName != null && me!.fullName!.isNotEmpty)
+          ? me.fullName!
+          : (me?.username ?? 'User');
+      username = me?.username ?? 'user';
+      bio = me?.bio;
+      avatarUrl = me?.avatarUrl;
+      profileUserId = me?.id ?? '';
+    } else {
+      final p = _targetProfile ?? {};
+      username = p['username']?.toString() ?? 'user';
+      displayName = (p['fullName']?.toString() ?? username);
+      bio = p['bio']?.toString();
+      avatarUrl = p['avatarUrl']?.toString();
+      profileUserId = widget.userId!;
     }
 
-    final profile = _profile!;
-
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: const PreferredSize(
-        preferredSize: Size.fromHeight(70),
-        child: TopAppBar(),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: !_isOwnProfile
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
+        title: Text(
+          '@$username',
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Cover gradient
-            Container(
-              height: 180,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-            // Avatar, name, and bio
-            Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
-              children: [
-                Container(height: 0),
-                Positioned(
-                  top: -60,
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF833AB4),
-                          Color(0xFFF77737),
-                          Color(0xFFE1306C),
-                          Color(0xFFFD1D1D),
-                          Color(0xFFFCB045),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: CircleAvatar(
-                      radius: 60,
-                      backgroundImage: profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty
-                          ? NetworkImage(profile.avatarUrl!)
-                          : null,
-                      child: profile.avatarUrl == null || profile.avatarUrl!.isEmpty
-                          ? const Icon(Icons.person, size: 60)
-                          : null,
-                      backgroundColor: Colors.white,
-                    ),
+            const SizedBox(height: 12),
+            // Avatar
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFFE2C55), Color(0xFF00F2FE)],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 70),
-            Text(
-              profile.fullName != null && profile.fullName!.isNotEmpty
-                  ? profile.fullName!
-                  : profile.username,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              profile.bio ?? '',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            // Followers / Following stats
-            FollowStatsBox(userId: profile.id),
-            const SizedBox(height: 16),
-            // Edit profile button
-            ElevatedButton(
-              onPressed: _editProfile,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                child: CircleAvatar(
+                  radius: 48,
+                  backgroundColor: Colors.grey.shade100,
+                  backgroundImage: (avatarUrl != null && avatarUrl.startsWith('http'))
+                      ? NetworkImage(avatarUrl)
+                      : null,
+                  child: (avatarUrl == null || !avatarUrl.startsWith('http'))
+                      ? Text(
+                          displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        )
+                      : null,
                 ),
               ),
-              child: const Text('Edit Profile', style: TextStyle(fontSize: 16)),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
+
+            // Display Name
+            Text(
+              displayName,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '@$username',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+            if (bio != null && bio.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  bio,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+
+            // Follower stats
+            if (profileUserId.isNotEmpty)
+              FollowStatsBox(userId: profileUserId),
+            const SizedBox(height: 16),
+
+            // Action Button: Edit Profile (Own) or Follow / Following (Other)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: _isOwnProfile
+                  ? SizedBox(
+                      width: double.infinity,
+                      height: 42,
+                      child: OutlinedButton(
+                        onPressed: _editProfile,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text(
+                          'Edit Profile',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                      ),
+                    )
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 42,
+                      child: ElevatedButton(
+                        onPressed: _isFollowingLoading ? null : _toggleFollow,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isFollowing
+                              ? Colors.grey.shade200
+                              : const Color(0xFFFE2C55),
+                          foregroundColor: _isFollowing ? Colors.black87 : Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: _isFollowingLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(
+                                _isFollowing ? 'Following' : 'Follow',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 20),
+            Divider(height: 1, color: Colors.grey.shade200),
+
+            // Published Posts Section Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.grid_on, size: 18, color: Colors.black87),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Published Posts (${_userPosts.length})',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // User Posts Grid / List
+            if (_isLoadingPosts)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(),
+              )
+            else if (_userPosts.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(Icons.post_add, size: 48, color: Colors.grey.shade300),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No posts published yet',
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                itemCount: _userPosts.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final post = _userPosts[index];
+                  final title = post['title']?.toString() ?? 'News Update';
+                  final content = post['content']?.toString() ?? '';
+                  final imageUrl = post['imageUrl']?.toString();
+
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (imageUrl != null && imageUrl.isNotEmpty) ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              imageUrl,
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 60,
+                                height: 60,
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.5,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (content.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  content,
+                                  style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _currentIndex,
-        onChanged: _onNavTap,
-      ),
+      bottomNavigationBar: _isOwnProfile
+          ? BottomNavBar(
+              currentIndex: _currentIndex,
+              onChanged: _onNavTap,
+            )
+          : null,
     );
   }
 }

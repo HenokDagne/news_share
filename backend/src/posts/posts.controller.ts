@@ -24,6 +24,8 @@ import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostResponseDto } from './dto/post-response.dto';
+import { CreateCommentDto } from './dto/create-comment.dto';
+import { CommentResponseDto } from './dto/comment-response.dto';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ApiPaginatedResponse } from '../common/swagger/api-paginated-response.decorator';
@@ -63,8 +65,11 @@ export class PostsController {
   @Get('posts')
   @ApiOperation({ summary: 'Global timeline, newest first' })
   @ApiPaginatedResponse(PostResponseDto)
-  timeline(@Query() q: PaginationQueryDto) {
-    return this.posts.timeline(q.limit, q.cursor);
+  timeline(
+    @CurrentUser('id') userId: string | undefined,
+    @Query() q: PaginationQueryDto,
+  ) {
+    return this.posts.timeline(userId, q.limit, q.cursor);
   }
 
   @Get('posts/:id')
@@ -72,18 +77,22 @@ export class PostsController {
   @ApiResponse({ status: 200, type: PostResponseDto })
   @ApiResponse({ status: 400, description: 'Invalid UUID' })
   @ApiResponse({ status: 404, description: 'Post not found' })
-  findOne(@Param('id') id: string) {
-    return this.posts.findOne(id);
+  findOne(
+    @CurrentUser('id') userId: string | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.posts.findOne(id, userId);
   }
 
   @Get('users/:id/posts')
   @ApiOperation({ summary: 'Get posts by a specific user' })
   @ApiPaginatedResponse(PostResponseDto)
   userPosts(
+    @CurrentUser('id') currentUserId: string | undefined,
     @Param('id') id: string,
     @Query() q: PaginationQueryDto,
   ) {
-    return this.posts.userPosts(id, q.limit, q.cursor);
+    return this.posts.userPosts(id, currentUserId, q.limit, q.cursor);
   }
 
   @Patch('posts/:id')
@@ -114,5 +123,64 @@ export class PostsController {
     @Param('id') id: string,
   ) {
     return this.posts.remove(userId, id);
+  }
+
+  // ===================== LIKE / UNLIKE =====================
+
+  @Post('posts/:id/like')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Like a post' })
+  @ApiResponse({ status: 200, description: 'Post liked' })
+  like(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.posts.like(userId, id);
+  }
+
+  @Delete('posts/:id/like')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Unlike a post' })
+  @ApiResponse({ status: 200, description: 'Post unliked' })
+  unlike(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.posts.unlike(userId, id);
+  }
+
+  // ===================== COMMENTS =====================
+
+  @Get('posts/:id/comments')
+  @ApiOperation({ summary: 'List comments for a post' })
+  @ApiPaginatedResponse(CommentResponseDto)
+  getComments(
+    @Param('id') id: string,
+    @Query() q: PaginationQueryDto,
+  ) {
+    return this.posts.getComments(id, q.limit, q.cursor);
+  }
+
+  @Post('posts/:id/comments')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add a comment to a post' })
+  @ApiResponse({ status: 201, type: CommentResponseDto })
+  addComment(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+    @Body() dto: CreateCommentDto,
+  ) {
+    return this.posts.addComment(userId, id, dto);
+  }
+
+  @Delete('comments/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a comment (author only)' })
+  @ApiResponse({ status: 200, description: 'Comment deleted' })
+  deleteComment(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.posts.deleteComment(userId, id);
   }
 }

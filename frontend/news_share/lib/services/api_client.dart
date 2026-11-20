@@ -647,6 +647,51 @@ class ApiClient {
     await _sendRequest('DELETE', '/posts/$postId');
   }
 
+  // ===================== LIKES =====================
+
+  Future<Map<String, dynamic>> likePost(String postId) async {
+    final res = await _sendRequest('POST', '/posts/$postId/like');
+    return Map<String, dynamic>.from(res is Map ? res : {});
+  }
+
+  Future<Map<String, dynamic>> unlikePost(String postId) async {
+    final res = await _sendRequest('DELETE', '/posts/$postId/like');
+    return Map<String, dynamic>.from(res is Map ? res : {});
+  }
+
+  // ===================== COMMENTS =====================
+
+  Future<List<Map<String, dynamic>>> getComments(String postId, {int limit = 50, String? cursor}) async {
+    final queryParams = <String, String>{
+      'limit': limit.toString(),
+      if (cursor != null) 'cursor': cursor,
+    };
+    final uri = Uri.parse('$baseUrl/posts/$postId/comments').replace(queryParameters: queryParams);
+    final res = await http.get(uri, headers: _headers());
+    final data = _parseResponse(res);
+    if (data is Map && data['data'] is List) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+    if (data is Map && data['items'] is List) {
+      return List<Map<String, dynamic>>.from(data['items']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> addComment(String postId, String content) async {
+    final res = await _sendRequest('POST', '/posts/$postId/comments', body: {
+      'content': content.trim(),
+    });
+    return Map<String, dynamic>.from(res is Map ? res : {});
+  }
+
+  Future<void> deleteComment(String commentId) async {
+    await _sendRequest('DELETE', '/comments/$commentId');
+  }
+
   // ===================== FOLLOWS =====================
 
   Future<bool> follow(String targetUserId) async {
