@@ -22,6 +22,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _handler.usernameController.addListener(_onFieldChanged);
     _handler.emailController.addListener(_onFieldChanged);
     _handler.passwordController.addListener(_onFieldChanged);
+    _handler.confirmPasswordController.addListener(_onFieldChanged);
   }
 
   void _onFieldChanged() {
@@ -30,30 +31,22 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  bool _isPasswordWeak(String password) {
-    if (password.length < 8) return true;
-    final hasLetters = RegExp(r'[a-zA-Z]').hasMatch(password);
-    final hasDigits = RegExp(r'[0-9]').hasMatch(password);
-    final hasSpecial = RegExp(r'[^a-zA-Z0-9]').hasMatch(password);
-    final types = (hasLetters ? 1 : 0) + (hasDigits ? 1 : 0) + (hasSpecial ? 1 : 0);
-    return types < 2;
-  }
-
   bool get _isSignUpButtonEnabled {
     final username = _handler.usernameController.text.trim();
     final email = _handler.emailController.text.trim();
     final password = _handler.passwordController.text;
+    final confirm = _handler.confirmPasswordController.text;
 
     // Disabled if any required input is empty
-    if (username.isEmpty || email.isEmpty || password.isEmpty) {
+    if (username.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
       return false;
     }
-    // Disabled if username is less than 3 chars or email is invalid
-    if (username.length < 3 || !email.contains('@')) {
+    // Disabled if email does not have a basic valid format
+    if (!email.contains('@')) {
       return false;
     }
-    // Disabled if password is weak (less than 8 chars or lacks complexity)
-    if (_isPasswordWeak(password)) {
+    // Disabled if password and confirmation password do not match
+    if (password != confirm) {
       return false;
     }
 
@@ -79,6 +72,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   fullNameController: _handler.fullNameController,
                   emailController: _handler.emailController,
                   passwordController: _handler.passwordController,
+                  confirmPasswordController: _handler.confirmPasswordController,
                 ),
                 const SizedBox(height: 24),
                 InputButton(
@@ -101,6 +95,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _handler.usernameController.removeListener(_onFieldChanged);
     _handler.emailController.removeListener(_onFieldChanged);
     _handler.passwordController.removeListener(_onFieldChanged);
+    _handler.confirmPasswordController.removeListener(_onFieldChanged);
     _handler.dispose();
     super.dispose();
   }

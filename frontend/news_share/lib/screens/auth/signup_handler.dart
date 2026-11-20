@@ -11,6 +11,7 @@ import 'package:news_share/services/api_client.dart';
 class SignupHandler {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
   final usernameController = TextEditingController();
   final fullNameController = TextEditingController();
 
@@ -19,6 +20,12 @@ class SignupHandler {
     BuildContext context,
   ) async {
     if (formKey.currentState!.validate()) {
+      if (passwordController.text != confirmPasswordController.text) {
+        if (context.mounted) {
+          _showError(context, 'Passwords do not match');
+        }
+        return;
+      }
       try {
         final email = emailController.text.trim();
         final password = passwordController.text;
@@ -137,7 +144,7 @@ class SignupHandler {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: isVerifying
-                      ? null
+                       ? null
                       : () async {
                           final token = tokenController.text.trim();
                           if (token.isEmpty) {
@@ -193,6 +200,7 @@ class SignupHandler {
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
     usernameController.dispose();
     fullNameController.dispose();
   }
