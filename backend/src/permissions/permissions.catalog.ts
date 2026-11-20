@@ -9,7 +9,7 @@ export const RANK: Record<Role, number> = {
 };
 
 /** Only a SUPER_ADMIN may grant or modify these sensitive permissions. */
-export const SENSITIVE: Permission[] = ['ADMINS_MANAGE', 'USERS_DELETE', 'AUDIT_EXPORT'];
+export const SENSITIVE: Permission[] = ['ADMINS_MANAGE', 'USERS_DELETE', 'AUDIT_EXPORT', 'BACKUPS_MANAGE'];
 
 export const PRESETS: Record<'MODERATOR' | 'ADMIN', Permission[]> = {
   MODERATOR: [
@@ -29,6 +29,9 @@ export const PRESETS: Record<'MODERATOR' | 'ADMIN', Permission[]> = {
     'REPORTS_MODERATE',
     'POSTS_REMOVE',
     'AUDIT_VIEW',
+    'BACKUPS_VIEW',
+    'BACKUPS_CREATE',
+    'BACKUPS_RESTORE',
   ],
 };
 
@@ -44,6 +47,10 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   ADMINS_MANAGE: 'Create, update, and manage staff accounts',
   AUDIT_VIEW: 'View security audit logs',
   AUDIT_EXPORT: 'Export audit logs to CSV/JSON',
+  BACKUPS_VIEW: 'View backup archives and recovery metrics',
+  BACKUPS_CREATE: 'Trigger manual full and incremental backups',
+  BACKUPS_RESTORE: 'Execute backup restoration verification tests',
+  BACKUPS_MANAGE: 'Manage retention locks, legal holds, and secure disposal',
 };
 
 export function hasPermission(

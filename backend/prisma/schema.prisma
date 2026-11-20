@@ -35,6 +35,10 @@ enum Permission {
   ADMINS_MANAGE
   AUDIT_VIEW
   AUDIT_EXPORT
+  BACKUPS_VIEW
+  BACKUPS_CREATE
+  BACKUPS_RESTORE
+  BACKUPS_MANAGE
 }
 
 enum RestrictionType {
@@ -574,4 +578,102 @@ model UserActivity {
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, isRead])
   @@map("user_activities")
+}
+
+enum BackupType {
+  FULL
+  INCREMENTAL
+}
+
+enum BackupStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  DISPOSED
+}
+
+enum RestoreTestStatus {
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+}
+
+model BackupArchive {
+  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  backupType              BackupType            @default(FULL) @map("backup_type")
+  status                  BackupStatus          @default(PENDING)
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt             DateTime?             @map("completed_at") @db.Timestamptz(6)
+  rpoTargetMinutes        Int                   @default(1440) @map("rpo_target_minutes")
+  rtoTargetMinutes        Int                   @default(15) @map("rto_target_minutes")
+  uncompressedSizeBytes   BigInt                @default(0) @map("uncompressed_size_bytes")
+  compressedSizeBytes     BigInt                @default(0) @map("compressed_size_bytes")
+  checksumSha256          String                @map("checksum_sha256")
+  encryptedChecksumSha256 String                @map("encrypted_checksum_sha256")
+  encryptionAlgorithm     String                @default("AES-256-GCM") @map("encryption_algorithm")
+  encryptionKeyId         String                @default("master-backup-key-v1") @map("encryption_key_id")
+  iv                      String
+  authTag                 String                @map("auth_tag")
+  manifest                Json
+  parentBackupId          String?               @map("parent_backup_id") @db.Uuid
+  copiesCount             Int                   @default(3) @map("copies_count")
+  mediaTypesCount         Int                   @default(2) @map("media_types_count")
+  hasOffsiteCopy          Boolean               @default(true) @map("has_offsite_copy")
+  primaryLocation         String                @map("primary_location")
+  secondaryLocation       String?               @map("secondary_location")
+  offsiteLocation         String?               @map("offsite_location")
+  isImmutable             Boolean               @default(true) @map("is_immutable")
+  retentionLockUntil      DateTime              @map("retention_lock_until") @db.Timestamptz(6)
+  legalHold               Boolean               @default(false) @map("legal_hold")
+  createdBy               String?               @map("created_by")
+  createdIp               String?               @map("created_ip")
+  restoreTests            BackupRestoreTest[]
+  disposalRecord          BackupDisposalRecord?
+
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@index([backupType])
+  @@map("backup_archives")
+}
+
+model BackupRestoreTest {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  backupId            String            @map("backup_id") @db.Uuid
+  testType            String            @default("AUTOMATED_PERIODIC") @map("test_type")
+  status              RestoreTestStatus @default(IN_PROGRESS)
+  startedAt           DateTime          @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt         DateTime?         @map("completed_at") @db.Timestamptz(6)
+  durationMs          Int?              @map("duration_ms")
+  targetRtoSeconds    Int               @default(900) @map("target_rto_seconds")
+  actualRtoSeconds    Int?              @map("actual_rto_seconds")
+  integrityVerified   Boolean           @default(false) @map("integrity_verified")
+  decryptionVerified  Boolean           @default(false) @map("decryption_verified")
+  schemaVerified      Boolean           @default(false) @map("schema_verified")
+  dataRowsVerified    Int               @default(0) @map("data_rows_verified")
+  tablesVerified      Json?             @map("tables_verified")
+  errorMessage        String?           @map("error_message")
+  testedBy            String?           @map("tested_by")
+  testEnvironment     String            @default("ISOLATED_SANDBOX") @map("test_environment")
+  backup              BackupArchive     @relation(fields: [backupId], references: [id], onDelete: Cascade)
+
+  @@index([backupId])
+  @@index([startedAt(sort: Desc)])
+  @@map("backup_restore_tests")
+}
+
+model BackupDisposalRecord {
+  id                            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  backupId                      String        @unique @map("backup_id") @db.Uuid
+  disposedAt                    DateTime      @default(now()) @map("disposed_at") @db.Timestamptz(6)
+  disposedBy                    String        @map("disposed_by")
+  reason                        String
+  wipeAlgorithm                 String        @default("NIST_SP_800_88_REV1_OVERWRITE") @map("wipe_algorithm")
+  overwritePasses               Int           @default(3) @map("overwrite_passes")
+  cryptographicErasureConfirmed Boolean       @default(true) @map("cryptographic_erasure_confirmed")
+  certificateOfDestruction      Json          @map("certificate_of_destruction")
+  auditLogId                    String?       @map("audit_log_id")
+  backup                        BackupArchive @relation(fields: [backupId], references: [id], onDelete: Cascade)
+
+  @@map("backup_disposal_records")
 }
