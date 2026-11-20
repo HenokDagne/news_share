@@ -7,23 +7,142 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+  AUDITOR
+}
+
+enum UserStatus {
+  ACTIVE
+  DEACTIVATED
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+enum Permission {
+  DASHBOARD_VIEW
+  USERS_VIEW
+  USERS_MANAGE
+  USERS_BAN
+  USERS_DELETE
+  REPORTS_VIEW
+  REPORTS_MODERATE
+  POSTS_REMOVE
+  ADMINS_MANAGE
+  AUDIT_VIEW
+  AUDIT_EXPORT
+}
+
+enum RestrictionType {
+  DEACTIVATION
+  SUSPENSION
+  BAN
+}
+
+enum RestrictionStatus {
+  ACTIVE
+  EXPIRED
+  LIFTED
+}
+
+enum PostStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum ReportTargetType {
+  POST
+  USER
+}
+
+enum ReportReason {
+  SEXUAL_CONTENT
+  NUDITY
+  HARASSMENT_BULLYING
+  HATE_SPEECH
+  VIOLENCE
+  SPAM_SCAM
+  MISINFORMATION
+  OTHER
+}
+
+enum CaseStatus {
+  PENDING
+  UNDER_REVIEW
+  ACTION_TAKEN
+  REJECTED
+  RESOLVED
+}
+
+enum ModerationActionType {
+  DISMISS_REPORTS
+  REMOVE_POST
+  RESTORE_POST
+  WARN_USER
+  SUSPEND_USER
+  BAN_USER
+  UNBAN_USER
+  DEACTIVATE_USER
+  ACTIVATE_USER
+  DELETE_USER
+  RESTORE_USER
+}
+
+enum ActivityType {
+  REPORT_SUBMITTED
+  REPORT_STATUS_CHANGED
+  WARNING_RECEIVED
+  RESTRICTION_APPLIED
+  RESTRICTION_LIFTED
+  POST_REMOVED
+  POST_RESTORED
+  ACCOUNT_STATUS_CHANGED
+  PASSWORD_CHANGED
+}
+
 model User {
-  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email             String         @unique
-  passwordHash      String         @map("password_hash")
-  emailVerified     Boolean        @default(false) @map("email_verified")
-  emailVerifiedAt   DateTime?      @map("email_verified_at") @db.Timestamptz(6)
-  failedLoginCount  Int            @default(0) @map("failed_login_count")
-  lockedUntil       DateTime?      @map("locked_until") @db.Timestamptz(6)
-  lastLoginAt       DateTime?      @map("last_login_at") @db.Timestamptz(6)
-  passwordChangedAt DateTime?      @map("password_changed_at") @db.Timestamptz(6)
-  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email             String            @unique
+  passwordHash      String            @map("password_hash")
+  role              Role              @default(USER)
+  status            UserStatus        @default(ACTIVE)
+  statusUpdatedAt   DateTime?         @map("status_updated_at") @db.Timestamptz(6)
+  deletedAt         DateTime?         @map("deleted_at") @db.Timestamptz(6)
+  deletedById       String?           @map("deleted_by_id") @db.Uuid
+  mustChangePassword Boolean          @default(false) @map("must_change_password")
+  lastActiveAt      DateTime?         @map("last_active_at") @db.Timestamptz(6)
+  createdById       String?           @map("created_by_id") @db.Uuid
+  emailVerified     Boolean           @default(false) @map("email_verified")
+  emailVerifiedAt   DateTime?         @map("email_verified_at") @db.Timestamptz(6)
+  failedLoginCount  Int               @default(0) @map("failed_login_count")
+  lockedUntil       DateTime?         @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt       DateTime?         @map("last_login_at") @db.Timestamptz(6)
+  passwordChangedAt DateTime?         @map("password_changed_at") @db.Timestamptz(6)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
   oneTimeTokens     OneTimeToken[]
   profile           Profile?
   refreshTokens     RefreshToken[]
   sessions          Session[]
+  auditLogs         AuditLog[]
+  securityAlerts    SecurityAlert[]
+  permissions       UserPermission[]
+  restrictions      UserRestriction[]
+  warnings          UserWarning[]
+  activities        UserActivity[]
+  notInterested     NotInterested[]
+  savedPosts        SavedPost[]
+  reportsFiled      Report[]
+  casesAgainst      ReportCase[]       @relation("CaseTargetUser")
+  actionsAgainst    ModerationAction[] @relation("ActionTargetUser")
 
+  @@index([status])
+  @@index([role])
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -96,20 +215,28 @@ model Profile {
 }
 
 model Post {
-  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId            String         @map("user_id") @db.Uuid
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String          @map("user_id") @db.Uuid
   title             String?
   content           String?
-  imageUrl          String?        @map("image_url")
-  imagePublicId     String?        @map("image_public_id")
-  imageResourceType String         @default("image") @map("image_resource_type")
-  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  imageUrl          String?         @map("image_url")
+  imagePublicId     String?         @map("image_public_id")
+  imageResourceType String          @default("image") @map("image_resource_type")
+  status            PostStatus      @default(ACTIVE)
+  removedAt         DateTime?       @map("removed_at") @db.Timestamptz(6)
+  removedById       String?         @map("removed_by_id") @db.Uuid
+  removalReason     String?         @map("removal_reason")
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
   notifications     Notification[]
-  author            Profile        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  author            Profile         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notInterestedBy   NotInterested[]
+  savedBy           SavedPost[]
+  cases             ReportCase[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
   @@map("posts")
 }
 
@@ -146,4 +273,271 @@ model Notification {
 enum TokenType {
   EMAIL_VERIFY
   PASSWORD_RESET
+}
+
+enum AuditCategory {
+  USER_ACTIVITY
+  AUTHENTICATION
+  AUTHORIZATION
+  DATA_CHANGE
+  SENSITIVE_RESOURCE
+  ADMIN_ACTION
+  SYSTEM_EVENT
+  SECURITY_ALERT
+}
+
+enum AuditSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+model AuditLog {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sequenceNumber BigInt        @unique @default(autoincrement()) @map("sequence_number")
+  timestamp      DateTime      @default(now()) @map("timestamp") @db.Timestamptz(6)
+  category       AuditCategory @default(USER_ACTIVITY)
+  action         String
+  severity       AuditSeverity @default(INFO)
+  userId         String?       @map("user_id") @db.Uuid
+  username       String?
+  ipAddress      String?       @map("ip_address")
+  userAgent      String?       @map("user_agent")
+  resource       String?
+  httpMethod     String?       @map("http_method")
+  statusCode     Int?          @map("status_code")
+  durationMs     Int?          @map("duration_ms")
+  encryptedData  String?       @map("encrypted_data") @db.Text
+  dataHash       String?       @map("data_hash")
+  previousHash   String        @map("previous_hash")
+  recordHash     String        @map("record_hash")
+  isExported     Boolean       @default(false) @map("is_exported")
+  exportedAt     DateTime?     @map("exported_at") @db.Timestamptz(6)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([timestamp(sort: Desc)])
+  @@index([action])
+  @@index([userId])
+  @@index([category])
+  @@index([severity])
+  @@index([ipAddress])
+  @@map("audit_logs")
+}
+
+model SecurityAlert {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  timestamp        DateTime      @default(now()) @map("timestamp") @db.Timestamptz(6)
+  alertType        String        @map("alert_type")
+  severity         AuditSeverity @default(HIGH)
+  status           AlertStatus   @default(OPEN)
+  title            String
+  description      String
+  ipAddress        String?       @map("ip_address")
+  userId           String?       @map("user_id") @db.Uuid
+  username         String?
+  metadata         Json?
+  escalationTier   String        @default("TIER_1") @map("escalation_tier")
+  routedTo         String?       @map("routed_to")
+  notificationSent Boolean       @default(false) @map("notification_sent")
+  resolvedAt       DateTime?     @map("resolved_at") @db.Timestamptz(6)
+  resolvedBy       String?       @map("resolved_by")
+  resolutionNotes  String?       @map("resolution_notes")
+  user             User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([severity])
+  @@index([alertType])
+  @@index([timestamp(sort: Desc)])
+  @@map("security_alerts")
+}
+
+model AuditPurgeLog {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  timestamp            DateTime  @default(now()) @map("timestamp") @db.Timestamptz(6)
+  retentionDays        Int       @map("retention_days")
+  recordsPurged        Int       @map("records_purged")
+  oldestRecordPurgedAt DateTime? @map("oldest_record_purged_at") @db.Timestamptz(6)
+  newestRecordPurgedAt DateTime? @map("newest_record_purged_at") @db.Timestamptz(6)
+  genesisRecordHash    String    @map("genesis_record_hash")
+  purgedBy             String?   @map("purged_by")
+
+  @@map("audit_purge_logs")
+}
+
+model UserPermission {
+  userId      String     @map("user_id") @db.Uuid
+  permission  Permission
+  grantedById String?    @map("granted_by_id") @db.Uuid
+  grantedAt   DateTime   @default(now()) @map("granted_at") @db.Timestamptz(6)
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permission])
+  @@map("user_permissions")
+}
+
+model UserRestriction {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String            @map("user_id") @db.Uuid
+  type          RestrictionType
+  status        RestrictionStatus @default(ACTIVE)
+  reason        String
+  publicReason  String?           @map("public_reason")
+  evidenceRef   String?           @map("evidence_ref")
+  policyRef     String?           @map("policy_ref")
+  imposedById   String            @map("imposed_by_id") @db.Uuid
+  caseId        String?           @map("case_id") @db.Uuid
+  startsAt      DateTime          @default(now()) @map("starts_at") @db.Timestamptz(6)
+  expiresAt     DateTime?         @map("expires_at") @db.Timestamptz(6)
+  liftedAt      DateTime?         @map("lifted_at") @db.Timestamptz(6)
+  liftedById    String?           @map("lifted_by_id") @db.Uuid
+  liftReason    String?           @map("lift_reason")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@map("user_restrictions")
+}
+
+model UserWarning {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  issuedById String    @map("issued_by_id") @db.Uuid
+  caseId     String?   @map("case_id") @db.Uuid
+  message    String
+  policyRef  String?   @map("policy_ref")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt     DateTime? @map("read_at") @db.Timestamptz(6)
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("user_warnings")
+}
+
+model ReportCase {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  targetKey       String             @map("target_key")
+  targetType      ReportTargetType   @map("target_type")
+  targetPostId    String?            @map("target_post_id") @db.Uuid
+  targetUserId    String             @map("target_user_id") @db.Uuid
+  status          CaseStatus         @default(PENDING)
+  priorityScore   Int                @default(0) @map("priority_score")
+  reportCount     Int                @default(0) @map("report_count")
+  topReason       ReportReason?      @map("top_reason")
+  snapshot        Json
+  assignedToId    String?            @map("assigned_to_id") @db.Uuid
+  firstReportedAt DateTime           @map("first_reported_at") @db.Timestamptz(6)
+  lastReportedAt  DateTime           @map("last_reported_at") @db.Timestamptz(6)
+  closedAt        DateTime?          @map("closed_at") @db.Timestamptz(6)
+  closedById      String?            @map("closed_by_id") @db.Uuid
+  outcomeNote     String?            @map("outcome_note")
+
+  targetUser      User               @relation("CaseTargetUser", fields: [targetUserId], references: [id], onDelete: Restrict)
+  targetPost      Post?              @relation(fields: [targetPostId], references: [id], onDelete: SetNull)
+  reports         Report[]
+  actions         ModerationAction[]
+
+  @@index([status, priorityScore(sort: Desc), lastReportedAt(sort: Desc)])
+  @@index([targetKey, status])
+  @@index([targetUserId])
+  @@map("report_cases")
+}
+
+model Report {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId     String       @map("case_id") @db.Uuid
+  reporterId String       @map("reporter_id") @db.Uuid
+  targetKey  String       @map("target_key")
+  reason     ReportReason
+  details    String?
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  case       ReportCase   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  reporter   User         @relation(fields: [reporterId], references: [id], onDelete: Restrict)
+
+  @@unique([caseId, reporterId])
+  @@index([reporterId, targetKey, createdAt(sort: Desc)])
+  @@map("reports")
+}
+
+model ModerationAction {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type          ModerationActionType
+  caseId        String?              @map("case_id") @db.Uuid
+  targetUserId  String               @map("target_user_id") @db.Uuid
+  targetPostId  String?              @map("target_post_id") @db.Uuid
+  performedById String               @map("performed_by_id") @db.Uuid
+  reason        String
+  publicReason  String?              @map("public_reason")
+  evidenceRef   String?              @map("evidence_ref")
+  policyRef     String?              @map("policy_ref")
+  restrictionId String?              @map("restriction_id") @db.Uuid
+  expiresAt     DateTime?            @map("expires_at") @db.Timestamptz(6)
+  metadata      Json?
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  case          ReportCase?          @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  targetUser    User                 @relation("ActionTargetUser", fields: [targetUserId], references: [id], onDelete: Restrict)
+
+  @@index([targetUserId, createdAt(sort: Desc)])
+  @@index([performedById, createdAt(sort: Desc)])
+  @@index([caseId])
+  @@map("moderation_actions")
+}
+
+model NotInterested {
+  userId    String   @map("user_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+  @@map("not_interested")
+}
+
+model SavedPost {
+  userId    String   @map("user_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("saved_posts")
+}
+
+model UserActivity {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  type      ActivityType
+  title     String
+  body      String?
+  refType   String?      @map("ref_type")
+  refId     String?      @map("ref_id") @db.Uuid
+  metadata  Json?
+  isRead    Boolean      @default(false) @map("is_read")
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, isRead])
+  @@map("user_activities")
 }

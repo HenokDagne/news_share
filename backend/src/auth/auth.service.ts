@@ -8,8 +8,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TokenType } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AuditSeverity, TokenType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { AccountStatusService } from '../enforcement/account-status.service';
+import { EVENTS } from '../common/events/events';
+import { AUDIT_ACTIONS } from '../audit/audit.constants';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -44,6 +49,9 @@ export class AuthService implements OnModuleInit {
     private readonly captcha: CaptchaService,
     private readonly policy: PasswordPolicyService,
     private readonly sessions: SessionService,
+    private readonly audit: AuditService,
+    private readonly accountStatus: AccountStatusService,
+    private readonly events: EventEmitter2,
   ) {}
 
   async onModuleInit() {
@@ -116,6 +124,19 @@ export class AuthService implements OnModuleInit {
     const verificationToken = await this.tokens.issue(user.id, TokenType.EMAIL_VERIFY, 24 * 60);
     void this.mail.sendVerification(email, verificationToken);
 
+    void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_REGISTER, {
+      userId: user.id,
+      username: email,
+      ipAddress: ctx.ip,
+      payload: { username: profile.username },
+    });
+
+    this.events.emit(EVENTS.USER_REGISTERED, {
+      userId: user.id,
+      username: profile.username,
+      createdAt: user.createdAt,
+    });
+
     return {
       message: 'Registration successful! A verification token has been sent to your email. Please verify your account before logging in.',
       email: user.email,
@@ -138,7 +159,16 @@ export class AuthService implements OnModuleInit {
     });
 
     // Start session and issue tokens upon email verification
+    // Enforcement check: assert account status
+    await this.accountStatus.assertCanAuthenticate(user);
+
     const sessionTokens = await this.sessions.start(user.id, ctx);
+
+    void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_EMAIL_VERIFIED, {
+      userId: user.id,
+      username: user.email,
+      ipAddress: ctx.ip,
+    });
 
     return {
       message: 'Email verified successfully. Your account is now active!',
@@ -175,6 +205,11 @@ export class AuthService implements OnModuleInit {
     // Equalize timing if user doesn't exist
     if (!user || !user.profile) {
       await verifyPassword(dto.password, this.dummyHash);
+      void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_LOGIN_FAILURE, {
+        username: email,
+        ipAddress: ctx.ip,
+        payload: { reason: 'USER_NOT_FOUND' },
+      });
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -185,6 +220,13 @@ export class AuthService implements OnModuleInit {
       const remainingSeconds = Math.ceil((user.lockedUntil.getTime() - now.getTime()) / 1000);
       const remainingMinutes = Math.ceil(remainingSeconds / 60);
       this.logger.warn(`Login attempted for locked account: ${user.email}. Remaining lockout: ${remainingMinutes}m.`);
+
+      void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_LOGIN_FAILURE, {
+        userId: user.id,
+        username: user.email,
+        ipAddress: ctx.ip,
+        payload: { reason: 'ACCOUNT_LOCKED', remainingMinutes },
+      });
 
       throw new UnauthorizedException({
         statusCode: 401,
@@ -212,6 +254,16 @@ export class AuthService implements OnModuleInit {
         select: { failedLoginCount: true },
       });
 
+      void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_LOGIN_FAILURE, {
+        userId: user.id,
+        username: user.email,
+        ipAddress: ctx.ip,
+        payload: {
+          reason: 'BAD_PASSWORD',
+          consecutiveFailures: updated.failedLoginCount,
+        },
+      });
+
       if (updated.failedLoginCount >= maxFailures) {
         const lockedUntil = new Date(Date.now() + lockoutMinutes * 60_000);
         await this.prisma.user.update({
@@ -224,6 +276,18 @@ export class AuthService implements OnModuleInit {
 
         this.logger.warn(`Account locked for ${user.email} after ${maxFailures} consecutive failed login attempts.`);
         void this.mail.sendLockNotice(user.email);
+
+        void this.audit.logSystemEvent(AUDIT_ACTIONS.SECURITY_ALERT, {
+          severity: AuditSeverity.HIGH,
+          userId: user.id,
+          username: user.email,
+          ipAddress: ctx.ip,
+          payload: {
+            reason: 'ACCOUNT_LOCKED_BRUTE_FORCE',
+            maxFailures,
+            lockoutMinutes,
+          },
+        });
       }
 
       throw new UnauthorizedException('Invalid email or password');
@@ -231,8 +295,17 @@ export class AuthService implements OnModuleInit {
 
     // 4. Email verification check
     if (!user.emailVerified) {
+      void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_LOGIN_FAILURE, {
+        userId: user.id,
+        username: user.email,
+        ipAddress: ctx.ip,
+        payload: { reason: 'EMAIL_NOT_VERIFIED' },
+      });
       throw new ForbiddenException('Email not verified. Please verify your email before logging in.');
     }
+
+    // 4.5 Enforcement check: assert account status
+    await this.accountStatus.assertCanAuthenticate(user);
 
     // 5. Successful login: reset failed login count, clear lock, and update lastLoginAt
     await this.prisma.user.update({
@@ -246,7 +319,17 @@ export class AuthService implements OnModuleInit {
     });
 
     // 6. Token-Based Authentication & Session Management (Section 1.4)
+    // Enforcement check: assert account status
+    await this.accountStatus.assertCanAuthenticate(user);
+
     const sessionTokens = await this.sessions.start(user.id, ctx);
+
+    void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_LOGIN_SUCCESS, {
+      userId: user.id,
+      username: user.email,
+      ipAddress: ctx.ip,
+      payload: { sessionId: sessionTokens.sessionId },
+    });
 
     return {
       profile: toMe(user, user.profile),
@@ -357,6 +440,9 @@ export class AuthService implements OnModuleInit {
       }
     }
 
+    // Enforcement check: assert account status
+    await this.accountStatus.assertCanAuthenticate(user);
+
     const sessionTokens = await this.sessions.start(user.id, ctx);
 
     return {
@@ -408,6 +494,12 @@ export class AuthService implements OnModuleInit {
     // 6. Security notice email
     void this.mail.sendSecurityNotice(user.email, 'Your account password was successfully updated.');
 
+    void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_PASSWORD_CHANGE, {
+      userId,
+      username: user.email,
+      payload: { reason: 'USER_INITIATED' },
+    });
+
     return {
       message: 'Password changed successfully. All other active sessions have been signed out.',
     };
@@ -423,6 +515,12 @@ export class AuthService implements OnModuleInit {
       const resetToken = await this.tokens.issue(user.id, TokenType.PASSWORD_RESET, 30);
       void this.mail.sendPasswordReset(user.email, resetToken);
     }
+
+    void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_PASSWORD_RESET_REQUEST, {
+      username: email,
+      ipAddress: ctx.ip,
+      payload: { userFound: !!user },
+    });
 
     // Generic response prevents account enumeration
     return {
@@ -455,6 +553,11 @@ export class AuthService implements OnModuleInit {
 
     void this.mail.sendSecurityNotice(user.email, 'Your password was successfully reset.');
 
+    void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_PASSWORD_RESET_SUCCESS, {
+      userId,
+      username: user.email,
+    });
+
     return {
       message: 'Password reset successfully. Please log in with your new password.',
     };
@@ -484,6 +587,10 @@ export class AuthService implements OnModuleInit {
     if (currentSid) {
       await this.sessions.revoke(currentSid, 'LOGOUT');
     }
+    void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_LOGOUT, {
+      userId,
+      payload: { sessionId: currentSid },
+    });
   }
 
   async logoutAll(userId: string) {

@@ -11,6 +11,7 @@ import {
   Put,
   Query,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -21,6 +22,11 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
+import { Roles } from '../audit/roles.decorator';
+import { RolesGuard } from '../audit/roles.guard';
+import { AuditService } from '../audit/audit.service';
+import { AUDIT_ACTIONS } from '../audit/audit.constants';
 import { UsersService } from './users.service';
 import { AuthService } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
@@ -41,6 +47,7 @@ export class UsersController {
     private readonly users: UsersService,
     private readonly auth: AuthService,
     private readonly sessions: SessionService,
+    private readonly audit: AuditService,
   ) {}
 
   @Get('me')
@@ -133,5 +140,23 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   getProfile(@Param('id') id: string) {
     return this.users.getProfileById(id);
+  }
+
+  @Patch('admin/users/:id/role')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Update a user role (Admin only - Audited)' })
+  async updateUserRole(
+    @Param('id') targetUserId: string,
+    @Body('role') newRole: Role,
+    @CurrentUser('email') adminEmail: string,
+  ) {
+    const result = await this.users.updateUserRole(targetUserId, newRole, adminEmail);
+    await this.audit.logAdminAction(AUDIT_ACTIONS.ADMIN_USER_ROLE_CHANGED, {
+      username: adminEmail,
+      resource: `admin/users/${targetUserId}/role`,
+      payload: { targetUserId, oldRole: result.oldRole, newRole: result.newRole },
+    });
+    return result;
   }
 }

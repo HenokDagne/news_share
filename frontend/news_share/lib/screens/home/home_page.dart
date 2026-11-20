@@ -1,14 +1,13 @@
 /*
-  Home screen scaffold that renders the main feed, wires bottom navigation,
-  and coordinates navigation to news, groups, notifications, and profile sections.
+  Home screen with TikTok/Reels style vertical full-screen news feed,
+  smooth PageView scrolling, search filter, and bottom navigation.
 */
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import '../../services/news_service.dart';
-import '../../models/news_item.dart'; //
+import '../../models/news_item.dart';
 import 'top_app_bar.dart';
-import 'create_post_box.dart';
 import 'news_card.dart';
 import '../post/post_page.dart';
 import '../notification/notification_page.dart';
@@ -26,9 +25,11 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final NewsService _newsService = NewsService();
   final TextEditingController _searchController = TextEditingController();
+  final PageController _pageController = PageController();
   late Future<List<NewsItem>> newsFuture;
   int currentIndex = 0;
   String _searchQuery = '';
+  bool _isSearchVisible = false;
 
   @override
   void initState() {
@@ -61,7 +62,8 @@ class _HomePageState extends State<HomePage> {
   bool _matchesQuery(NewsItem item, String q) {
     return item.title.toLowerCase().contains(q) ||
         item.subtitle.toLowerCase().contains(q) ||
-        item.source.toLowerCase().contains(q);
+        item.source.toLowerCase().contains(q) ||
+        item.category.toLowerCase().contains(q);
   }
 
   void _onSearchChanged(String value) {
@@ -106,70 +108,174 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
-      appBar: const PreferredSize(
-        preferredSize: Size.fromHeight(70),
-        child: TopAppBar(),
-      ),
-      body: SafeArea(
+      backgroundColor: Colors.black,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(_isSearchVisible ? 120 : 64),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CreatePostBox(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              hintText: 'Search news or topics...',
-            ),
-            Expanded(
-              child: FutureBuilder<List<NewsItem>>(
-                future: newsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error, size: 64, color: Colors.red),
-                          const SizedBox(height: 16),
-                          Text('Error: ${snapshot.error}'),
-                          ElevatedButton(
-                            onPressed: () => setState(
-                              () => newsFuture = _loadNews(query: _searchQuery),
-                            ),
-                            child: const Text('Retry'),
+            const TopAppBar(),
+            if (_isSearchVisible)
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          autofocus: true,
+                          onChanged: _onSearchChanged,
+                          decoration: const InputDecoration(
+                            icon: Icon(Icons.search, size: 20, color: Colors.grey),
+                            hintText: 'Search news, topics, creators...',
+                            border: InputBorder.none,
+                            isDense: true,
                           ),
-                        ],
+                          style: const TextStyle(fontSize: 14),
+                        ),
                       ),
-                    );
-                  }
-                  final items = snapshot.data ?? [];
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      final updated = _loadNews(query: _searchQuery);
-                      setState(() => newsFuture = updated);
-                      await updated;
-                    },
-                    child: ListView.builder(
-                      padding: const EdgeInsets.only(top: 8),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) =>
-                          NewsCard(item: items[index]),
                     ),
-                  );
-                },
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.black54),
+                      onPressed: () {
+                        setState(() {
+                          _isSearchVisible = false;
+                          _searchController.clear();
+                          _onSearchChanged('');
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
+      ),
+      body: Stack(
+        children: [
+          FutureBuilder<List<NewsItem>>(
+            future: newsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF00F2FE)),
+                );
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 56, color: Colors.redAccent),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Failed to load news',
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () => setState(() => newsFuture = _loadNews(query: _searchQuery)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              final items = snapshot.data ?? [];
+              if (items.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.newspaper, size: 64, color: Colors.white38),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No news stories found',
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                      if (_searchQuery.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _searchController.clear();
+                              _onSearchChanged('');
+                            });
+                          },
+                          child: const Text('Clear search filter'),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }
+
+              // Full-screen TikTok vertical swipe feed
+              return RefreshIndicator(
+                onRefresh: () async {
+                  final updated = _loadNews(query: _searchQuery);
+                  setState(() => newsFuture = updated);
+                  await updated;
+                },
+                child: PageView.builder(
+                  controller: _pageController,
+                  scrollDirection: Axis.vertical,
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return NewsCard(
+                      key: ValueKey(item.id ?? '$index-${item.title}'),
+                      item: item,
+                      onHidePost: () {
+                        setState(() {
+                          items.removeAt(index);
+                        });
+                      },
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+
+          // Floating search toggle button if search is not visible
+          if (!_isSearchVisible)
+            Positioned(
+              top: 14,
+              right: 14,
+              child: GestureDetector(
+                onTap: () => setState(() => _isSearchVisible = true),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.4),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24, width: 1),
+                  ),
+                  child: const Icon(Icons.search, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: currentIndex,

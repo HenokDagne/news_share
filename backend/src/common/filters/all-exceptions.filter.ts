@@ -6,12 +6,16 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AuditSeverity, Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
+import { AuditService } from '../../audit/audit.service';
+import { AUDIT_ACTIONS } from '../../audit/audit.constants';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
+
+  constructor(private readonly audit?: AuditService) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -21,6 +25,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let error = 'Internal Server Error';
     let message: string | string[] = 'An unexpected error occurred';
+    let extra: Record<string, any> = {};
 
     if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
@@ -32,6 +37,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const obj = res as Record<string, any>;
         message = obj.message || exception.message;
         error = obj.error || exception.name.replace('Exception', '');
+        if (obj.code) extra.code = obj.code;
+        if (obj.restriction) extra.restriction = obj.restriction;
+        if (obj.lockout) extra.lockout = obj.lockout;
       }
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       if (exception.code === 'P2002') {
@@ -55,10 +63,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
+    // Section 2.2: Log critical system events: SERVICE_FAILURE on 500 errors
+    if (statusCode >= 500 && this.audit) {
+      void this.audit.logSystemEvent(AUDIT_ACTIONS.SERVICE_FAILURE, {
+        username: (request as any).user?.email || (request as any).user?.username || 'SYSTEM',
+        ipAddress:
+          (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || request.ip,
+        resource: `${request.method} ${request.url}`,
+        httpMethod: request.method,
+        statusCode,
+        severity: AuditSeverity.HIGH,
+        payload: {
+          error,
+          message,
+          stack: (exception as Error)?.stack,
+        },
+      });
+    }
+
     response.status(statusCode).json({
       statusCode,
       error,
       message,
+      ...extra,
       path: request.url,
       timestamp: new Date().toISOString(),
     });

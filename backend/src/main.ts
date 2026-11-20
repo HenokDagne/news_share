@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { setupSwagger } from './common/swagger/setup-swagger';
+import { AuditService } from './audit/audit.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -30,7 +31,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  app.useGlobalFilters(new AllExceptionsFilter());
+
+  const auditService = app.get(AuditService, { strict: false });
+  app.useGlobalFilters(new AllExceptionsFilter(auditService));
 
   if (process.env.SWAGGER_ENABLED !== 'false') {
     setupSwagger(app);

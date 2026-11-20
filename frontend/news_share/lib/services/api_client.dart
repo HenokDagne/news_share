@@ -10,6 +10,7 @@ class CurrentUserModel {
   final String id;
   final String email;
   final String username;
+  final String role;
   final String? fullName;
   final String? avatarUrl;
   final String? bio;
@@ -20,6 +21,7 @@ class CurrentUserModel {
     required this.id,
     required this.email,
     required this.username,
+    this.role = 'USER',
     this.fullName,
     this.avatarUrl,
     this.bio,
@@ -32,6 +34,7 @@ class CurrentUserModel {
       id: json['id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       username: json['username']?.toString() ?? '',
+      role: json['role']?.toString() ?? 'USER',
       fullName: json['fullName']?.toString() ?? json['full_name']?.toString(),
       avatarUrl: json['avatarUrl']?.toString() ?? json['avatar_url']?.toString(),
       bio: json['bio']?.toString(),
@@ -44,6 +47,7 @@ class CurrentUserModel {
     'id': id,
     'email': email,
     'username': username,
+    'role': role,
     'fullName': fullName,
     'avatarUrl': avatarUrl,
     'bio': bio,
@@ -56,8 +60,16 @@ class ApiException implements Exception {
   final int statusCode;
   final String message;
   final String error;
+  final String? code;
+  final Map<String, dynamic>? restriction;
 
-  ApiException({required this.statusCode, required this.message, this.error = ''});
+  ApiException({
+    required this.statusCode,
+    required this.message,
+    this.error = '',
+    this.code,
+    this.restriction,
+  });
 
   @override
   String toString() => message;
@@ -223,6 +235,8 @@ class ApiClient {
 
     String errorMsg = 'Request failed';
     String errorType = '';
+    String? code;
+    Map<String, dynamic>? restriction;
     if (jsonBody is Map<String, dynamic>) {
       if (jsonBody['message'] is List) {
         errorMsg = (jsonBody['message'] as List).join(', ');
@@ -230,12 +244,18 @@ class ApiClient {
         errorMsg = jsonBody['message'].toString();
       }
       errorType = jsonBody['error']?.toString() ?? '';
+      code = jsonBody['code']?.toString();
+      if (jsonBody['restriction'] is Map<String, dynamic>) {
+        restriction = jsonBody['restriction'] as Map<String, dynamic>;
+      }
     }
 
     throw ApiException(
       statusCode: response.statusCode,
       message: errorMsg,
       error: errorType,
+      code: code,
+      restriction: restriction,
     );
   }
 
@@ -261,6 +281,22 @@ class ApiClient {
     }
     return false;
   }
+
+  // Generic HTTP helpers
+  Future<dynamic> get(String endpoint, {bool requiresAuth = true}) =>
+      _sendRequest('GET', endpoint, requiresAuth: requiresAuth);
+
+  Future<dynamic> post(String endpoint, {Map<String, dynamic>? body, bool requiresAuth = true}) =>
+      _sendRequest('POST', endpoint, body: body, requiresAuth: requiresAuth);
+
+  Future<dynamic> patch(String endpoint, {Map<String, dynamic>? body, bool requiresAuth = true}) =>
+      _sendRequest('PATCH', endpoint, body: body, requiresAuth: requiresAuth);
+
+  Future<dynamic> put(String endpoint, {Map<String, dynamic>? body, bool requiresAuth = true}) =>
+      _sendRequest('PUT', endpoint, body: body, requiresAuth: requiresAuth);
+
+  Future<dynamic> delete(String endpoint, {Map<String, dynamic>? body, bool requiresAuth = true}) =>
+      _sendRequest('DELETE', endpoint, body: body, requiresAuth: requiresAuth);
 
   // ===================== AUTH =====================
 
@@ -499,6 +535,12 @@ class ApiClient {
     if (data is Map && data['data'] is List) {
       return List<Map<String, dynamic>>.from(data['data']);
     }
+    if (data is Map && data['items'] is List) {
+      return List<Map<String, dynamic>>.from(data['items']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
+    }
     return [];
   }
 
@@ -552,6 +594,12 @@ class ApiClient {
     if (data is Map && data['data'] is List) {
       return List<Map<String, dynamic>>.from(data['data']);
     }
+    if (data is Map && data['items'] is List) {
+      return List<Map<String, dynamic>>.from(data['items']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
+    }
     return [];
   }
 
@@ -566,6 +614,12 @@ class ApiClient {
     if (data is Map && data['data'] is List) {
       return List<Map<String, dynamic>>.from(data['data']);
     }
+    if (data is Map && data['items'] is List) {
+      return List<Map<String, dynamic>>.from(data['items']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
+    }
     return [];
   }
 
@@ -579,6 +633,12 @@ class ApiClient {
     final data = _parseResponse(res);
     if (data is Map && data['data'] is List) {
       return List<Map<String, dynamic>>.from(data['data']);
+    }
+    if (data is Map && data['items'] is List) {
+      return List<Map<String, dynamic>>.from(data['items']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
     }
     return [];
   }
@@ -618,6 +678,12 @@ class ApiClient {
     if (data is Map && data['data'] is List) {
       return List<Map<String, dynamic>>.from(data['data']);
     }
+    if (data is Map && data['items'] is List) {
+      return List<Map<String, dynamic>>.from(data['items']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
+    }
     return [];
   }
 
@@ -631,6 +697,12 @@ class ApiClient {
     final data = _parseResponse(res);
     if (data is Map && data['data'] is List) {
       return List<Map<String, dynamic>>.from(data['data']);
+    }
+    if (data is Map && data['items'] is List) {
+      return List<Map<String, dynamic>>.from(data['items']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
     }
     return [];
   }
@@ -648,6 +720,12 @@ class ApiClient {
     final data = _parseResponse(res);
     if (data is Map && data['data'] is List) {
       return List<Map<String, dynamic>>.from(data['data']);
+    }
+    if (data is Map && data['items'] is List) {
+      return List<Map<String, dynamic>>.from(data['items']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
     }
     return [];
   }
@@ -668,5 +746,108 @@ class ApiClient {
 
   Future<void> deleteNotification(String id) async {
     await _sendRequest('DELETE', '/notifications/$id');
+  }
+
+  // ===================== REPORTING & MODERATION =====================
+
+  Future<List<Map<String, dynamic>>> getReportReasons() async {
+    final res = await _sendRequest('GET', '/report-reasons', requiresAuth: false);
+    if (res is List) {
+      return List<Map<String, dynamic>>.from(res);
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> reportPost(
+    String postId, {
+    required String reason,
+    String? details,
+  }) async {
+    final res = await _sendRequest(
+      'POST',
+      '/posts/$postId/report',
+      body: {
+        'reason': reason,
+        if (details != null && details.isNotEmpty) 'details': details,
+      },
+    );
+    return res is Map<String, dynamic> ? res : {'status': 'RECEIVED'};
+  }
+
+  Future<Map<String, dynamic>> reportUser(
+    String userId, {
+    required String reason,
+    String? details,
+  }) async {
+    final res = await _sendRequest(
+      'POST',
+      '/users/$userId/report',
+      body: {
+        'reason': reason,
+        if (details != null && details.isNotEmpty) 'details': details,
+      },
+    );
+    return res is Map<String, dynamic> ? res : {'status': 'RECEIVED'};
+  }
+
+  // ===================== PREFERENCES (NOT INTERESTED & SAVE) =====================
+
+  Future<void> setNotInterested(String postId) async {
+    await _sendRequest('POST', '/posts/$postId/not-interested');
+  }
+
+  Future<void> undoNotInterested(String postId) async {
+    await _sendRequest('DELETE', '/posts/$postId/not-interested');
+  }
+
+  Future<void> savePost(String postId) async {
+    await _sendRequest('POST', '/posts/$postId/save');
+  }
+
+  Future<void> unsavePost(String postId) async {
+    await _sendRequest('DELETE', '/posts/$postId/save');
+  }
+
+  // ===================== PERSONAL ACTIVITY & ACCOUNT STATUS =====================
+
+  Future<Map<String, dynamic>> getAccountStatus() async {
+    final res = await _sendRequest('GET', '/me/account-status');
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<List<Map<String, dynamic>>> getUserActivity({int limit = 50}) async {
+    final res = await _sendRequest('GET', '/me/activity?limit=$limit');
+    if (res is Map && res['data'] is List) {
+      return List<Map<String, dynamic>>.from(res['data']);
+    } else if (res is List) {
+      return List<Map<String, dynamic>>.from(res);
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getMyReports({int limit = 50}) async {
+    final res = await _sendRequest('GET', '/me/reports?limit=$limit');
+    if (res is Map && res['data'] is List) {
+      return List<Map<String, dynamic>>.from(res['data']);
+    } else if (res is List) {
+      return List<Map<String, dynamic>>.from(res);
+    }
+    return [];
+  }
+
+  Future<List<Map<String, dynamic>>> getMyWarnings() async {
+    final res = await _sendRequest('GET', '/me/warnings');
+    if (res is List) {
+      return List<Map<String, dynamic>>.from(res);
+    }
+    return [];
+  }
+
+  Future<void> markActivityRead(String id) async {
+    await _sendRequest('POST', '/me/activity/$id/read');
+  }
+
+  Future<void> markAllActivityRead() async {
+    await _sendRequest('POST', '/me/activity/read-all');
   }
 }

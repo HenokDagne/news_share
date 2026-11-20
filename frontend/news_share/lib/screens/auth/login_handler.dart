@@ -6,6 +6,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:news_share/screens/home/home_page.dart';
+import 'package:news_share/screens/moderation/account_status_screen.dart';
 import 'package:news_share/services/api_client.dart';
 import 'package:news_share/services/biometric_service.dart';
 
@@ -41,7 +42,19 @@ class LoginHandler {
         }
       } on ApiException catch (e) {
         if (context.mounted) {
-          if (e.statusCode == 403 && e.message.toLowerCase().contains('not verified')) {
+          if (e.code == 'ACCOUNT_BANNED' ||
+              e.code == 'ACCOUNT_SUSPENDED' ||
+              e.code == 'ACCOUNT_DEACTIVATED') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AccountStatusScreen(
+                  status: e.code!,
+                  restriction: e.restriction,
+                ),
+              ),
+            );
+          } else if (e.statusCode == 403 && e.message.toLowerCase().contains('not verified')) {
             _showUnverifiedEmailDialog(context, email);
           } else {
             _showError(context, e.message);

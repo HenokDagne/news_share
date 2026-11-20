@@ -175,9 +175,17 @@ export class SessionService {
           select: {
             id: true,
             email: true,
+            role: true,
             emailVerified: true,
             emailVerifiedAt: true,
             lockedUntil: true,
+            status: true,
+            deletedAt: true,
+            permissions: {
+              select: {
+                permission: true,
+              },
+            },
           },
         },
       },
@@ -201,10 +209,16 @@ export class SessionService {
 
     // Update lastActiveAt periodically (avoid writing on every single request if < 60s)
     if (now - session.lastActiveAt.getTime() > 60_000) {
-      await this.prisma.session.update({
-        where: { id: sid },
-        data: { lastActiveAt: new Date() },
-      });
+      await this.prisma.$transaction([
+        this.prisma.session.update({
+          where: { id: sid },
+          data: { lastActiveAt: new Date() },
+        }),
+        this.prisma.user.update({
+          where: { id: userId },
+          data: { lastActiveAt: new Date() },
+        }),
+      ]);
     }
 
     return session;

@@ -13,6 +13,7 @@ import { PostResponseDto } from './dto/post-response.dto';
 import { toAuthor } from '../users/users.mapper';
 import { EVENTS, PostCreatedEvent } from '../common/events/events';
 import { cursorArgs, toPage } from '../common/utils/pagination.util';
+import { feedPostsWhere, publicPostsWhere } from '../common/visibility/visible-posts';
 
 const AUTHOR_SELECT = {
   id: true,
@@ -86,7 +87,12 @@ export class PostsService {
     const userIds = [userId, ...follows.map((f) => f.followingId)];
 
     const rows = await this.prisma.post.findMany({
-      where: { userId: { in: userIds } },
+      where: {
+        AND: [
+          { userId: { in: userIds } },
+          feedPostsWhere(userId),
+        ],
+      },
       take: limit + 1,
       ...cursorArgs(cursor),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -100,6 +106,7 @@ export class PostsService {
 
   async timeline(limit = 20, cursor?: string) {
     const rows = await this.prisma.post.findMany({
+      where: publicPostsWhere(),
       take: limit + 1,
       ...cursorArgs(cursor),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -117,7 +124,12 @@ export class PostsService {
     }
 
     const rows = await this.prisma.post.findMany({
-      where: { userId: targetUserId },
+      where: {
+        AND: [
+          { userId: targetUserId },
+          publicPostsWhere(),
+        ],
+      },
       take: limit + 1,
       ...cursorArgs(cursor),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -134,8 +146,11 @@ export class PostsService {
       throw new BadRequestException('Invalid UUID');
     }
 
-    const post = await this.prisma.post.findUnique({
-      where: { id },
+    const post = await this.prisma.post.findFirst({
+      where: {
+        id,
+        ...publicPostsWhere(),
+      },
       include: {
         author: { select: AUTHOR_SELECT },
       },

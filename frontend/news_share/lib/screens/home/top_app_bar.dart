@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
+import '../activity/activity_page.dart';
 import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
 import '../auth/login.dart';
@@ -87,7 +88,19 @@ class _TopAppBarState extends State<TopAppBar> {
             Row(
               children: [
                 // Notifications
-                if (isLoggedIn)
+                if (isLoggedIn) ...[
+                  IconButton(
+                    tooltip: 'Activity & Moderation History',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ActivityPage(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.history_outlined),
+                  ),
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
@@ -120,6 +133,7 @@ class _TopAppBarState extends State<TopAppBar> {
                         ),
                     ],
                   ),
+                ],
 
                 const SizedBox(width: 8),
 

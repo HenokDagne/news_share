@@ -46,6 +46,9 @@ export class ProfileResponseDto {
 export class MeResponseDto extends ProfileResponseDto {
   @ApiProperty({ example: 'ada@example.com' })
   email: string;
+
+  @ApiProperty({ example: 'USER', enum: ['USER', 'ADMIN', 'AUDITOR'] })
+  role: string;
 }
 
 export function toAuthor(profile: {
@@ -83,7 +86,7 @@ export function toProfile(profile: {
 }
 
 export function toMe(
-  user: { id: string; email: string },
+  user: { id: string; email: string; role?: string },
   profile: {
     username: string;
     fullName: string | null;
@@ -96,6 +99,7 @@ export function toMe(
   return {
     id: user.id,
     email: user.email,
+    role: user.role || 'USER',
     username: profile.username,
     fullName: profile.fullName ?? null,
     bio: profile.bio ?? null,

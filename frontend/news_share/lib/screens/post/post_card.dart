@@ -5,7 +5,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../services/api_client.dart';
+import '../moderation/post_actions_sheet.dart';
 import 'delete_post.dart';
 
 class PostCard extends StatefulWidget {
@@ -148,10 +148,6 @@ class _PostCardState extends State<PostCard> {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
-    final currentUserId = ApiClient.instance.currentUserId;
-    final canManage =
-        currentUserId != null && currentUserId == widget.postUserId;
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -176,32 +172,27 @@ class _PostCardState extends State<PostCard> {
                           ),
                         ),
                       ),
-                      if (canManage)
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert),
-                          onSelected: (value) async {
-                            if (value == 'edit') widget.onEdit?.call();
-                            if (value == 'delete') {
+                      IconButton(
+                        icon: const Icon(Icons.more_vert, size: 20),
+                        onPressed: () {
+                          PostActionsSheet.show(
+                            context,
+                            postId: widget.postId,
+                            postUserId: widget.postUserId,
+                            postTitle: widget.title,
+                            onEdit: widget.onEdit,
+                            onDelete: () async {
                               await DeletePostService.deletePost(widget.postId);
                               if (widget.onDelete != null) widget.onDelete!();
-                              if (mounted) {
+                              if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('Post deleted')),
                                 );
                               }
-                            }
-                          },
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            PopupMenuItem(
-                              value: 'delete',
-                              child: Text(
-                                'Delete',
-                                style: TextStyle(color: Colors.red),
-                              ),
-                            ),
-                          ],
-                        ),
+                            },
+                          );
+                        },
+                      ),
                     ],
                   ),
 

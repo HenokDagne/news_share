@@ -1,4 +1,6 @@
 class NewsItem {
+  final String? id;
+  final String? userId;
   final String source;
   final String timeAgo;
   final String title;
@@ -8,6 +10,8 @@ class NewsItem {
   final String url;
 
   NewsItem({
+    this.id,
+    this.userId,
     required this.source,
     required this.timeAgo,
     required this.title,
@@ -27,12 +31,17 @@ class NewsItem {
       return NewsItem.fromPostJson(json);
     }
 
+    final id = json['id']?.toString();
+    final userId = json['userId']?.toString() ?? json['user_id']?.toString();
+
     // Standard NewsAPI format
     final sourceName = json['source'] is Map
         ? (json['source']['name']?.toString() ?? '')
         : (json['source']?.toString() ?? '');
 
     return NewsItem(
+      id: id,
+      userId: userId,
       source: sourceName.isNotEmpty
           ? sourceName
           : (json['author']?.toString() ?? 'News'),
@@ -47,13 +56,17 @@ class NewsItem {
 
   /// Parses a backend Post into a NewsItem for display on the feed
   factory NewsItem.fromPostJson(Map<String, dynamic> json) {
+    final id = json['id']?.toString();
     final author = json['author'];
     String authorName = 'Community';
+    String? authorId;
     if (author is Map<String, dynamic>) {
       authorName = (author['fullName'] ?? author['username'] ?? 'Community').toString();
+      authorId = author['id']?.toString();
     } else if (author != null) {
       authorName = author.toString();
     }
+    authorId ??= json['userId']?.toString() ?? json['user_id']?.toString();
 
     final dateStr = (json['createdAt'] ?? json['created_at'])?.toString();
     final title = (json['title'] ?? '').toString();
@@ -65,6 +78,8 @@ class NewsItem {
         : (content.length > 60 ? '${content.substring(0, 60)}...' : content);
 
     return NewsItem(
+      id: id,
+      userId: authorId,
       source: authorName,
       timeAgo: _formatTimeAgo(dateStr),
       title: displayTitle.isNotEmpty ? displayTitle : 'Post',
