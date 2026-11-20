@@ -26,6 +26,26 @@ Thumbs.db
 .pub/
 /coverage/
 
+# Gradle distribution caches & wrapper dists (DO NOT version-control)
+.gradle/
+**/.gradle/
+wrapper/dists/
+**/wrapper/dists/
+**/android/wrapper/dists/
+**/android/wrapper/
+**/android/local.properties
+**/android/captures/
+**/android/.gradle/
+*.apk
+*.aab
+*.ap_
+
+# Ensure required Gradle wrapper executables and properties are preserved
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.properties
+!**/gradlew
+!**/gradlew.bat
+
 # Django/Python
 __pycache__/
 *.py[cod]
