@@ -21,6 +21,7 @@ import { PreferencesModule } from './preferences/preferences.module';
 import { ActivityModule } from './activity/activity.module';
 import { AdminModule } from './admin/admin.module';
 import { BackupsModule } from './backups/backups.module';
+import { SecurityModule } from './security/security.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './permissions/permissions.guard';
 import { AuditInterceptor } from './audit/audit.interceptor';
@@ -50,6 +51,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
     ActivityModule,
     AdminModule,
     BackupsModule,
+    SecurityModule,
     AuthModule,
     UsersModule,
     PostsModule,

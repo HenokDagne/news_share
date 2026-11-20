@@ -41,26 +41,59 @@ export class AllExceptionsFilter implements ExceptionFilter {
         if (obj.restriction) extra.restriction = obj.restriction;
         if (obj.lockout) extra.lockout = obj.lockout;
       }
-    } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
-      if (exception.code === 'P2002') {
-        statusCode = HttpStatus.CONFLICT;
-        error = 'Conflict';
-        const target = (exception.meta?.target as string[]) || [];
-        message = `Unique constraint failed on field(s): ${target.join(', ')}`;
-      } else if (exception.code === 'P2025') {
-        statusCode = HttpStatus.NOT_FOUND;
-        error = 'Not Found';
-        message = 'Record not found';
+    } else if (
+      exception instanceof Prisma.PrismaClientKnownRequestError ||
+      exception instanceof Prisma.PrismaClientUnknownRequestError ||
+      exception instanceof Prisma.PrismaClientRustPanicError ||
+      exception instanceof Prisma.PrismaClientInitializationError ||
+      exception instanceof Prisma.PrismaClientValidationError
+    ) {
+      if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+        if (exception.code === 'P2002') {
+          statusCode = HttpStatus.CONFLICT;
+          error = 'Conflict';
+          const target = (exception.meta?.target as string[]) || [];
+          message = `Unique constraint failed on field(s): ${target.join(', ')}`;
+        } else if (exception.code === 'P2025') {
+          statusCode = HttpStatus.NOT_FOUND;
+          error = 'Not Found';
+          message = 'Requested record was not found.';
+        } else {
+          statusCode = HttpStatus.BAD_REQUEST;
+          error = 'Bad Request';
+          message = 'Invalid database request parameters.';
+        }
       } else {
-        statusCode = HttpStatus.BAD_REQUEST;
-        error = 'Database Error';
-        message = 'Invalid database request';
+        statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+        error = 'Internal Server Error';
+        message = 'An unexpected internal server error occurred. Please try again later.';
       }
+
+      this.logger.error(
+        `Prisma database error on ${request.method} ${request.url}: ${(exception as Error)?.message}`,
+        (exception as Error)?.stack,
+      );
     } else {
+      statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+      error = 'Internal Server Error';
+      message = 'An unexpected internal server error occurred. Please try again later.';
+
       this.logger.error(
         `Unhandled exception on ${request.method} ${request.url}: ${(exception as Error)?.message}`,
         (exception as Error)?.stack,
       );
+    }
+
+    // Section 4.2: Ensure generic error messages on 500s; never expose internal paths, db errors, or stack traces
+    if (statusCode >= 500) {
+      error = 'Internal Server Error';
+      message = 'An unexpected internal server error occurred. Please try again later.';
+    }
+
+    // Sanitize any remaining user-facing text to purge internal file paths or stack traces
+    if (typeof message === 'string') {
+      message = message.replace(/[A-Za-z]:\\[^ \n\r\t]+/g, '[REDACTED_PATH]');
+      message = message.replace(/\/(?:[a-zA-Z0-9_.-]+\/)+[a-zA-Z0-9_.-]+/g, '[REDACTED_PATH]');
     }
 
     // Section 2.2: Log critical system events: SERVICE_FAILURE on 500 errors

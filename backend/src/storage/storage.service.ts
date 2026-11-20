@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { randomUUID } from 'crypto';
+import * as fs from 'fs';
 import { ALLOWED_IMAGE_MIME_TYPES, MAX_AVATAR_BYTES, MAX_POST_IMAGE_BYTES } from '../common/constants/upload.constants';
 
 export interface UploadResult {
@@ -63,6 +64,34 @@ export class StorageService {
       throw new BadRequestException(
         `File size exceeds limit of ${Math.round(maxBytes / (1024 * 1024))} MB`,
       );
+    }
+
+    // Section 4.1: Enforce allow-lists for file uploads (type, size, content)
+    // Inspect magic byte signatures to prevent disguised executables / polyglots / shell scripts
+    const buffer = file.buffer || (file.path && fs.existsSync(file.path) ? fs.readFileSync(file.path) : null);
+    if (buffer && buffer.length >= 4) {
+      const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+      const isPng =
+        buffer[0] === 0x89 &&
+        buffer[1] === 0x50 &&
+        buffer[2] === 0x4e &&
+        buffer[3] === 0x47;
+      const isWebp =
+        buffer.length >= 12 &&
+        buffer[0] === 0x52 &&
+        buffer[1] === 0x49 &&
+        buffer[2] === 0x46 &&
+        buffer[3] === 0x46 &&
+        buffer[8] === 0x57 &&
+        buffer[9] === 0x45 &&
+        buffer[10] === 0x42 &&
+        buffer[11] === 0x50;
+
+      if (!isJpeg && !isPng && !isWebp) {
+        throw new BadRequestException(
+          'File content validation failed: file content signature does not match allowed image formats (JPEG, PNG, WebP). Malicious or executable uploads are prohibited.',
+        );
+      }
     }
   }
 
