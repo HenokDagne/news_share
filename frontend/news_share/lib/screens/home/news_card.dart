@@ -429,7 +429,7 @@ class _NewsCardState extends State<NewsCard> with SingleTickerProviderStateMixin
                   _buildRailButton(
                     icon: _isSaved ? Icons.bookmark : Icons.bookmark_border,
                     iconColor: _isSaved ? const Color(0xFF00F2FE) : Colors.white,
-                    label: _isSaved ? 'Saved' : 'Save',
+                    label: _savesCount > 0 ? '$_savesCount' : (_isSaved ? 'Saved' : 'Save'),
                     onTap: _handleSaveToggle,
                   ),
                   const SizedBox(height: 16),
