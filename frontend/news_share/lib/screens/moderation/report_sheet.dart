@@ -20,41 +20,58 @@ class ReportSubcategory {
   });
 }
 
-class ReportSheet extends StatefulWidget {
+class ReportPage extends StatefulWidget {
   final String targetId;
   final String targetType; // 'POST' or 'USER'
   final String? targetTitle;
 
-  const ReportSheet({
+  const ReportPage({
     super.key,
     required this.targetId,
     this.targetType = 'POST',
     this.targetTitle,
   });
 
+  static Future<void> navigate(
+    BuildContext context, {
+    required String targetId,
+    String targetType = 'POST',
+    String? targetTitle,
+  }) {
+    return Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReportPage(
+          targetId: targetId,
+          targetType: targetType,
+          targetTitle: targetTitle,
+        ),
+      ),
+    );
+  }
+
+  // Backward compatible alias for show()
   static Future<void> show(
     BuildContext context, {
     required String targetId,
     String targetType = 'POST',
     String? targetTitle,
   }) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ReportSheet(
-        targetId: targetId,
-        targetType: targetType,
-        targetTitle: targetTitle,
-      ),
+    return navigate(
+      context,
+      targetId: targetId,
+      targetType: targetType,
+      targetTitle: targetTitle,
     );
   }
 
   @override
-  State<ReportSheet> createState() => _ReportSheetState();
+  State<ReportPage> createState() => _ReportPageState();
 }
 
-class _ReportSheetState extends State<ReportSheet> {
+typedef ReportSheet = ReportPage;
+
+class _ReportPageState extends State<ReportPage> {
   // Categories matching Screenshot 2
   static const List<ReportCategory> _categories = [
     ReportCategory(
@@ -314,79 +331,46 @@ class _ReportSheetState extends State<ReportSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: screenHeight * 0.88,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: _selectedCategory != null
+              ? _onBackTapped
+              : () => Navigator.pop(context),
+        ),
+        title: Text(
+          _selectedCategory == null ? 'Select a reason' : 'Report reason',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.black87),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: Colors.grey.shade200),
+        ),
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: EdgeInsets.only(
-        top: 12,
-        bottom: bottomInset + 16,
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Top drag handle
-            Center(
-              child: Container(
-                height: 4,
-                width: 36,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Top Header: Centered "Select a reason", close button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  if (_selectedCategory != null)
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                      onPressed: _onBackTapped,
-                    )
-                  else
-                    const SizedBox(width: 48),
-                  Expanded(
-                    child: Text(
-                      _selectedCategory == null ? 'Select a reason' : 'Report reason',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.black87),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-
-            // Body
-            Flexible(
-              child: _selectedCategory == null
-                  ? _buildCategoryList()
-                  : _buildSubcategoryForm(),
-            ),
-          ],
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: _selectedCategory == null
+                ? _buildCategoryList()
+                : _buildSubcategoryForm(),
+          ),
         ),
       ),
     );
