@@ -58,6 +58,20 @@ export class BackupsService {
     }
   }
 
+  /**
+   * Transforms raw Prisma archive record for clean JSON serialization (handling BigInts)
+   */
+  public formatBackupArchive(b: any) {
+    if (!b) return null;
+    return {
+      ...b,
+      uncompressedSizeBytes: Number(b.uncompressedSizeBytes || 0),
+      compressedSizeBytes: Number(b.compressedSizeBytes || 0),
+      fileSizeBytes: Number(b.compressedSizeBytes || 0),
+      filename: b.primaryLocation ? path.basename(b.primaryLocation) : (b.filename || `backup_${b.id}.enc`),
+    };
+  }
+
   // ==========================================
   // 1. REGULAR & SCHEDULED BACKUPS (Section 3.1)
   // ==========================================
@@ -129,7 +143,7 @@ export class BackupsService {
     const snapshot = await this.extractDatabaseSnapshot(incrementalSince);
 
     // 3. Serialize and compress (gzip)
-    const rawJson = JSON.stringify(snapshot);
+    const rawJson = JSON.stringify(snapshot, (_, v) => (typeof v === 'bigint' ? v.toString() : v));
     const uncompressedSizeBytes = BigInt(Buffer.byteLength(rawJson, 'utf-8'));
     const compressedBuffer = zlib.gzipSync(Buffer.from(rawJson, 'utf-8'));
     const compressedSizeBytes = BigInt(compressedBuffer.length);
@@ -232,7 +246,7 @@ export class BackupsService {
       },
     });
 
-    return record;
+    return this.formatBackupArchive(record);
   }
 
   // ==========================================
@@ -265,7 +279,7 @@ export class BackupsService {
     }
 
     return {
-      items: backups,
+      items: backups.map((b) => this.formatBackupArchive(b)),
       nextCursor,
     };
   }
@@ -285,7 +299,7 @@ export class BackupsService {
       throw new NotFoundException(`Backup archive with ID ${id} not found`);
     }
 
-    return backup;
+    return this.formatBackupArchive(backup)!;
   }
 
   /**
@@ -526,7 +540,7 @@ export class BackupsService {
       },
     });
 
-    return updated;
+    return this.formatBackupArchive(updated)!;
   }
 
   // ==========================================
@@ -791,7 +805,10 @@ export class BackupsService {
         likes,
         follows,
         notifications,
-        auditLogs,
+        auditLogs: auditLogs.map((l) => ({
+          ...l,
+          sequenceNumber: l.sequenceNumber.toString(),
+        })),
       },
     };
   }

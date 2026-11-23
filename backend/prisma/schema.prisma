@@ -39,6 +39,9 @@ enum Permission {
   BACKUPS_CREATE
   BACKUPS_RESTORE
   BACKUPS_MANAGE
+  ROLES_VIEW
+  ROLES_MANAGE
+  ACCESS_REVIEWS_MANAGE
 }
 
 enum RestrictionType {
@@ -142,8 +145,14 @@ model User {
   savedPosts        SavedPost[]
   likes             Like[]
   reportsFiled      Report[]
-  casesAgainst      ReportCase[]       @relation("CaseTargetUser")
-  actionsAgainst    ModerationAction[] @relation("ActionTargetUser")
+  casesAgainst      ReportCase[]           @relation("CaseTargetUser")
+  actionsAgainst    ModerationAction[]     @relation("ActionTargetUser")
+  roleRequestsRequested RoleChangeRequest[] @relation("RoleRequestRequester")
+  roleRequestsTargeted  RoleChangeRequest[] @relation("RoleRequestTarget")
+  roleRequestsReviewed  RoleChangeRequest[] @relation("RoleRequestReviewer")
+  reviewCampaignsConducted AccessReviewCampaign[] @relation("CampaignConductor")
+  reviewDecisionsReceived  AccessReviewDecision[] @relation("ReviewDecisionUser")
+  reviewDecisionsConducted AccessReviewDecision[] @relation("ReviewDecisionReviewer")
 
   @@index([status])
   @@index([role])
@@ -676,4 +685,89 @@ model BackupDisposalRecord {
   backup                        BackupArchive @relation(fields: [backupId], references: [id], onDelete: Cascade)
 
   @@map("backup_disposal_records")
+}
+
+enum RoleRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ReviewCampaignStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AccessReviewAction {
+  MAINTAIN
+  REVOKE
+  MODIFY
+}
+
+model RoleChangeRequest {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String            @map("user_id") @db.Uuid
+  targetUserId  String            @map("target_user_id") @db.Uuid
+  currentRole   Role              @map("current_role")
+  requestedRole Role              @map("requested_role")
+  justification String
+  status        RoleRequestStatus @default(PENDING)
+  reviewedById  String?           @map("reviewed_by_id") @db.Uuid
+  reviewedAt    DateTime?         @map("reviewed_at") @db.Timestamptz(6)
+  reviewNotes   String?           @map("review_notes")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  requester     User              @relation("RoleRequestRequester", fields: [userId], references: [id], onDelete: Cascade)
+  targetUser    User              @relation("RoleRequestTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  reviewer      User?             @relation("RoleRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([userId])
+  @@index([targetUserId])
+  @@index([createdAt(sort: Desc)])
+  @@map("role_change_requests")
+}
+
+model AccessReviewCampaign {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  quarter       String
+  year          Int
+  status        ReviewCampaignStatus @default(IN_PROGRESS)
+  startedAt     DateTime             @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt   DateTime?            @map("completed_at") @db.Timestamptz(6)
+  conductedById String               @map("conducted_by_id") @db.Uuid
+  notes         String?
+  decisions     AccessReviewDecision[]
+
+  conductedBy   User                 @relation("CampaignConductor", fields: [conductedById], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([quarter, year])
+  @@map("access_review_campaigns")
+}
+
+model AccessReviewDecision {
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId          String             @map("campaign_id") @db.Uuid
+  userId              String             @map("user_id") @db.Uuid
+  roleAtReview        Role               @map("role_at_review")
+  permissionsAtReview Json               @map("permissions_at_review")
+  lastActiveAt        DateTime?          @map("last_active_at") @db.Timestamptz(6)
+  decision            AccessReviewAction @default(MAINTAIN)
+  decisionReason      String             @map("decision_reason")
+  executedAt          DateTime?          @map("executed_at") @db.Timestamptz(6)
+  reviewedById        String             @map("reviewed_by_id") @db.Uuid
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  campaign            AccessReviewCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user                User               @relation("ReviewDecisionUser", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy          User               @relation("ReviewDecisionReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@index([campaignId])
+  @@index([userId])
+  @@map("access_review_decisions")
 }

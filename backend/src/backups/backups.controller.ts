@@ -49,10 +49,10 @@ export class BackupsController {
     @Ip() ip: string,
   ) {
     return this.backupsService.createBackup(dto, {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      ipAddress: ip,
+      id: user?.id || user?.sub || 'admin',
+      email: user?.email || 'admin@news-share.local',
+      role: user?.role || Role.ADMIN,
+      ipAddress: ip || '127.0.0.1',
     });
   }
 

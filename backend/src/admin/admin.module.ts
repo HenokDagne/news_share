@@ -19,6 +19,10 @@ import { AdminModerationService } from './moderation/admin-moderation.service';
 import { AdminModerationController } from './moderation/admin-moderation.controller';
 import { AdminAuditService } from './audit/admin-audit.service';
 import { AdminAuditController } from './audit/admin-audit.controller';
+import { RoleManagementService } from './roles/role-management.service';
+import { AccessReviewService } from './roles/access-review.service';
+import { AdminRolesController } from './roles/admin-roles.controller';
+import { UserRoleRequestsController } from './roles/user-role-requests.controller';
 import { AdminGateway } from './realtime/admin.gateway';
 import { UserGateway } from './realtime/user.gateway';
 
@@ -39,6 +43,8 @@ import { UserGateway } from './realtime/user.gateway';
     ReportCasesController,
     AdminModerationController,
     AdminAuditController,
+    AdminRolesController,
+    UserRoleRequestsController,
   ],
   providers: [
     DashboardRepository,
@@ -48,6 +54,8 @@ import { UserGateway } from './realtime/user.gateway';
     ReportCasesService,
     AdminModerationService,
     AdminAuditService,
+    RoleManagementService,
+    AccessReviewService,
     AdminGateway,
     UserGateway,
   ],
@@ -58,6 +66,8 @@ import { UserGateway } from './realtime/user.gateway';
     ReportCasesService,
     AdminModerationService,
     AdminAuditService,
+    RoleManagementService,
+    AccessReviewService,
   ],
 })
 export class AdminModule {}

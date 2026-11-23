@@ -9,7 +9,14 @@ export const RANK: Record<Role, number> = {
 };
 
 /** Only a SUPER_ADMIN may grant or modify these sensitive permissions. */
-export const SENSITIVE: Permission[] = ['ADMINS_MANAGE', 'USERS_DELETE', 'AUDIT_EXPORT', 'BACKUPS_MANAGE'];
+export const SENSITIVE: Permission[] = [
+  'ADMINS_MANAGE',
+  'USERS_DELETE',
+  'AUDIT_EXPORT',
+  'BACKUPS_MANAGE',
+  'ROLES_MANAGE',
+  'ACCESS_REVIEWS_MANAGE',
+];
 
 export const PRESETS: Record<'MODERATOR' | 'ADMIN', Permission[]> = {
   MODERATOR: [
@@ -32,6 +39,9 @@ export const PRESETS: Record<'MODERATOR' | 'ADMIN', Permission[]> = {
     'BACKUPS_VIEW',
     'BACKUPS_CREATE',
     'BACKUPS_RESTORE',
+    'ROLES_VIEW',
+    'ROLES_MANAGE',
+    'ACCESS_REVIEWS_MANAGE',
   ],
 };
 
@@ -51,6 +61,9 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   BACKUPS_CREATE: 'Trigger manual full and incremental backups',
   BACKUPS_RESTORE: 'Execute backup restoration verification tests',
   BACKUPS_MANAGE: 'Manage retention locks, legal holds, and secure disposal',
+  ROLES_VIEW: 'View user roles and role change requests',
+  ROLES_MANAGE: 'Assign, modify, revoke roles and review requests',
+  ACCESS_REVIEWS_MANAGE: 'Conduct and record quarterly periodic access reviews',
 };
 
 export function hasPermission(

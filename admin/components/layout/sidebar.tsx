@@ -10,6 +10,7 @@ import {
   ShieldAlert,
   UserCog,
   FileCheck2,
+  Database,
   LogOut,
   Sparkles,
 } from 'lucide-react';
@@ -55,6 +56,12 @@ export function Sidebar() {
       href: '/audit',
       icon: FileCheck2,
       permission: 'AUDIT_VIEW',
+    },
+    {
+      label: 'Backup & Recovery',
+      href: '/backups',
+      icon: Database,
+      permission: 'BACKUPS_VIEW',
     },
   ];
 

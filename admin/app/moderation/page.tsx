@@ -43,17 +43,17 @@ export default function ModerationPage() {
     setIsLoading(true);
     try {
       if (activeTab === 'QUEUE') {
-        const res = await apiRequest<any[]>('/admin/moderation/queue');
-        setQueue(res || []);
+        const res = await apiRequest<any>('/admin/moderation/queue');
+        setQueue(Array.isArray(res) ? res : res?.items || []);
       } else if (activeTab === 'RESTRICTIONS') {
-        const res = await apiRequest<any[]>('/admin/moderation/restrictions?active=true');
-        setRestrictions(res || []);
+        const res = await apiRequest<any>('/admin/moderation/restrictions?active=true');
+        setRestrictions(Array.isArray(res) ? res : res?.items || []);
       } else if (activeTab === 'REMOVED_POSTS') {
-        const res = await apiRequest<any[]>('/admin/moderation/removed-posts');
-        setRemovedPosts(res || []);
+        const res = await apiRequest<any>('/admin/moderation/removed-posts');
+        setRemovedPosts(Array.isArray(res) ? res : res?.items || []);
       } else if (activeTab === 'ACTIONS') {
-        const res = await apiRequest<any[]>('/admin/moderation/actions');
-        setActions(res || []);
+        const res = await apiRequest<any>('/admin/moderation/actions');
+        setActions(Array.isArray(res) ? res : res?.items || []);
       }
     } catch (err) {
       console.error('Failed to fetch moderation tab data:', err);
@@ -333,20 +333,20 @@ export default function ModerationPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#232733]">
-                {actions.length === 0 ? (
+                {(!Array.isArray(actions) || actions.length === 0) ? (
                   <tr>
                     <td colSpan={5} className="py-12 text-center text-gray-500">
                       No moderation actions recorded yet.
                     </td>
                   </tr>
                 ) : (
-                  actions.map((a) => (
+                  (Array.isArray(actions) ? actions : []).map((a) => (
                     <tr key={a.id} className="hover:bg-[#181B22]/50">
                       <td className="px-5 py-3.5 font-bold text-white">
                         <StatusBadge status={a.type} />
                       </td>
                       <td className="px-5 py-3.5 text-gray-300">
-                        @{a.targetUser?.username || a.targetUserId?.substring(0, 8)}
+                        @{a.targetUsername || a.targetUser?.username || a.targetUserId?.substring(0, 8)}
                       </td>
                       <td className="px-5 py-3.5 font-mono text-gray-400">
                         {a.policyRef || 'GEN-1'}
