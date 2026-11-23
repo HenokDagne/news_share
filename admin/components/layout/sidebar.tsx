@@ -34,7 +34,7 @@ export function Sidebar() {
       permission: 'USERS_VIEW',
     },
     {
-      label: 'Reports Queue',
+      label: 'Report Page',
       href: '/reports',
       icon: Flag,
       permission: 'REPORTS_VIEW',

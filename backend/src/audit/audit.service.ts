@@ -172,13 +172,16 @@ export class AuditService {
       previousHash,
     });
 
+    const isUuid = (val?: string | null): boolean =>
+      Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
     return tx.auditLog.create({
       data: {
         timestamp,
         category,
         action: params.action,
         severity,
-        userId: params.userId || null,
+        userId: isUuid(params.userId) ? params.userId : null,
         username: params.username || null,
         ipAddress: params.ipAddress || null,
         userAgent: params.userAgent || null,

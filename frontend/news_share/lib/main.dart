@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/home/splash_screen.dart';
 import 'services/api_client.dart';
+import 'services/camera/camera_service_locator.dart';
 
 class NewsShareApp extends StatelessWidget {
   const NewsShareApp({super.key});
@@ -42,6 +43,7 @@ Future<void> _initializeApp() async {
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  initCameraService();
   appInitializationFuture = _initializeApp();
   runApp(const NewsShareApp());
 }

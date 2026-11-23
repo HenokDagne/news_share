@@ -80,96 +80,217 @@ export class ReportCasesService {
         ...(isUuid ? [{ id: params.q }] : []),
         { targetKey: { contains: params.q, mode: 'insensitive' } },
         { targetUser: { profile: { username: { contains: params.q, mode: 'insensitive' } } } },
+        { targetPost: { title: { contains: params.q, mode: 'insensitive' } } },
+        { targetPost: { content: { contains: params.q, mode: 'insensitive' } } },
       ];
     }
 
-    const orderBy: Prisma.ReportCaseOrderByWithRelationInput =
-      params.sort === 'reportCount'
-        ? { reportCount: params.order || 'desc' }
-        : params.sort === 'lastReportedAt'
-        ? { lastReportedAt: params.order || 'desc' }
-        : { priorityScore: params.order || 'desc' };
-
-    const [total, cases] = await Promise.all([
-      this.prisma.reportCase.count({ where }),
-      this.prisma.reportCase.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: [orderBy, { lastReportedAt: 'desc' }],
-        include: {
-          targetUser: {
-            select: {
-              id: true,
-              email: true,
-              profile: {
-                select: {
-                  username: true,
-                  fullName: true,
-                  avatarUrl: true,
-                },
+    // Fetch matching cases
+    const cases = await this.prisma.reportCase.findMany({
+      where,
+      orderBy: [
+        { lastReportedAt: 'desc' },
+        { priorityScore: 'desc' },
+      ],
+      include: {
+        targetUser: {
+          select: {
+            id: true,
+            email: true,
+            status: true,
+            profile: {
+              select: {
+                username: true,
+                fullName: true,
+                avatarUrl: true,
               },
             },
           },
-          targetPost: {
-            select: {
-              id: true,
-              title: true,
-              content: true,
-              imageUrl: true,
-              status: true,
+        },
+        targetPost: {
+          select: {
+            id: true,
+            title: true,
+            content: true,
+            imageUrl: true,
+            status: true,
+            createdAt: true,
+            author: {
+              select: {
+                username: true,
+                fullName: true,
+                avatarUrl: true,
+              },
             },
           },
-          reports: {
-            select: {
-              id: true,
-              reason: true,
-              reporter: {
-                select: {
-                  id: true,
-                  profile: {
-                    select: {
-                      username: true,
-                    },
+        },
+        reports: {
+          select: {
+            id: true,
+            reason: true,
+            details: true,
+            createdAt: true,
+            reporter: {
+              select: {
+                id: true,
+                email: true,
+                profile: {
+                  select: {
+                    username: true,
+                    fullName: true,
+                    avatarUrl: true,
                   },
                 },
               },
             },
-            take: 3,
           },
+          orderBy: { createdAt: 'desc' },
         },
-      }),
-    ]);
+      },
+    });
 
-    const items = cases.map((c) => {
+    // Group by targetKey so each target appears only ONCE
+    const targetMap = new Map<string, any>();
+
+    for (const c of cases) {
+      const key = c.targetKey;
+      if (!targetMap.has(key)) {
+        targetMap.set(key, {
+          id: c.id, // Primary case ID
+          caseIds: [c.id],
+          targetKey: c.targetKey,
+          targetType: c.targetType,
+          targetPostId: c.targetPostId,
+          targetUserId: c.targetUserId,
+          targetUser: c.targetUser,
+          targetUsername:
+            c.targetUser?.profile?.username ||
+            (c.snapshot as any)?.username ||
+            (c.snapshot as any)?.author?.username ||
+            'user',
+          targetUserAvatar:
+            c.targetUser?.profile?.avatarUrl ||
+            (c.snapshot as any)?.avatarUrl ||
+            (c.snapshot as any)?.author?.avatarUrl,
+          targetPost: c.targetPost,
+          targetTitle: c.targetPost?.title || (c.snapshot as any)?.title || null,
+          targetContent: c.targetPost?.content || (c.snapshot as any)?.content || null,
+          targetImageUrl: c.targetPost?.imageUrl || (c.snapshot as any)?.imageUrl || null,
+          snapshot: c.snapshot,
+          priorityScore: c.priorityScore,
+          status: c.status,
+          firstReportedAt: c.firstReportedAt,
+          lastReportedAt: c.lastReportedAt,
+          assignedToId: c.assignedToId,
+          reports: [...c.reports],
+          reasonsMap: {} as Record<string, number>,
+        });
+        for (const r of c.reports) {
+          if (r.reason) {
+            targetMap.get(key).reasonsMap[r.reason] =
+              (targetMap.get(key).reasonsMap[r.reason] || 0) + 1;
+          }
+        }
+      } else {
+        const existing = targetMap.get(key);
+        existing.caseIds.push(c.id);
+        // Merge reports without duplicate IDs
+        for (const rep of c.reports) {
+          if (!existing.reports.some((r: any) => r.id === rep.id)) {
+            existing.reports.push(rep);
+            if (rep.reason) {
+              existing.reasonsMap[rep.reason] =
+                (existing.reasonsMap[rep.reason] || 0) + 1;
+            }
+          }
+        }
+        // If this case is open/pending, prefer its ID and status
+        if (
+          c.status === CaseStatus.PENDING ||
+          (c.status === CaseStatus.UNDER_REVIEW && existing.status !== CaseStatus.PENDING)
+        ) {
+          existing.id = c.id;
+          existing.status = c.status;
+          existing.assignedToId = c.assignedToId;
+        }
+        existing.priorityScore = Math.max(existing.priorityScore, c.priorityScore);
+        if (new Date(c.firstReportedAt) < new Date(existing.firstReportedAt)) {
+          existing.firstReportedAt = c.firstReportedAt;
+        }
+        if (new Date(c.lastReportedAt) > new Date(existing.lastReportedAt)) {
+          existing.lastReportedAt = c.lastReportedAt;
+        }
+      }
+    }
+
+    // Build finalized array of grouped targets
+    let groupedList = Array.from(targetMap.values()).map((target) => {
+      const reasonsBreakdown = Object.entries(target.reasonsMap)
+        .map(([reason, count]) => ({ reason, count: count as number }))
+        .sort((a, b) => b.count - a.count);
+
+      const topReason = reasonsBreakdown.length > 0 ? reasonsBreakdown[0].reason : 'GENERAL';
+      const totalReportsCount = Math.max(target.reports.length, 1);
+
       let priorityLevel = 'LOW';
-      if (c.priorityScore >= 20) priorityLevel = 'CRITICAL';
-      else if (c.priorityScore >= 10) priorityLevel = 'HIGH';
-      else if (c.priorityScore >= 5) priorityLevel = 'MEDIUM';
+      if (target.priorityScore >= 20) priorityLevel = 'CRITICAL';
+      else if (target.priorityScore >= 10) priorityLevel = 'HIGH';
+      else if (target.priorityScore >= 5) priorityLevel = 'MEDIUM';
 
       return {
-        id: c.id,
-        targetKey: c.targetKey,
-        targetType: c.targetType,
-        targetUserId: c.targetUserId,
-        targetUsername: c.targetUser?.profile?.username || 'user',
-        targetUserAvatar: c.targetUser?.profile?.avatarUrl,
-        targetPost: c.targetPost,
-        status: c.status,
-        priorityScore: c.priorityScore,
+        id: target.id,
+        targetKey: target.targetKey,
+        targetType: target.targetType,
+        targetUserId: target.targetUserId,
+        targetUsername: target.targetUsername,
+        targetUserAvatar: target.targetUserAvatar,
+        targetUser: target.targetUser,
+        targetPost: target.targetPost,
+        targetTitle: target.targetTitle,
+        targetContent: target.targetContent,
+        targetImageUrl: target.targetImageUrl,
+        status: target.status,
+        priorityScore: target.priorityScore,
         priorityLevel,
-        reportCount: c.reportCount,
-        topReason: c.topReason,
-        firstReportedAt: c.firstReportedAt,
-        lastReportedAt: c.lastReportedAt,
-        assignedToId: c.assignedToId,
-        recentReporters: c.reports.map((r) => r.reporter.profile?.username || 'reporter'),
+        reportCount: totalReportsCount,
+        totalReportsCount,
+        topReason,
+        reasonsBreakdown,
+        firstReportedAt: target.firstReportedAt,
+        lastReportedAt: target.lastReportedAt,
+        assignedToId: target.assignedToId,
+        recentReporters: target.reports.slice(0, 5).map((r: any) => r.reporter?.profile?.username || 'reporter'),
       };
     });
 
+    // Sort grouped targets
+    if (params.sort === 'reportCount') {
+      groupedList.sort((a, b) =>
+        params.order === 'asc' ? a.reportCount - b.reportCount : b.reportCount - a.reportCount,
+      );
+    } else if (params.sort === 'firstReportedAt') {
+      groupedList.sort((a, b) => {
+        const diff = new Date(a.firstReportedAt).getTime() - new Date(b.firstReportedAt).getTime();
+        return params.order === 'asc' ? diff : -diff;
+      });
+    } else if (params.sort === 'priorityScore') {
+      groupedList.sort((a, b) =>
+        params.order === 'asc' ? a.priorityScore - b.priorityScore : b.priorityScore - a.priorityScore,
+      );
+    } else {
+      // Default: lastReportedAt desc
+      groupedList.sort((a, b) => {
+        const diff = new Date(a.lastReportedAt).getTime() - new Date(b.lastReportedAt).getTime();
+        return params.order === 'asc' ? diff : -diff;
+      });
+    }
+
+    const total = groupedList.length;
+    const paginatedItems = groupedList.slice(skip, skip + pageSize);
+
     return {
-      items,
-      data: items,
+      items: paginatedItems,
+      data: paginatedItems,
       total,
       page,
       pageSize,
@@ -196,7 +317,14 @@ export class ReportCasesService {
         },
         targetPost: {
           include: {
-            author: true,
+            author: {
+              select: {
+                id: true,
+                username: true,
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
           },
         },
         reports: {
@@ -204,9 +332,14 @@ export class ReportCasesService {
             reporter: {
               select: {
                 id: true,
+                email: true,
+                role: true,
+                status: true,
+                createdAt: true,
                 profile: {
                   select: {
                     username: true,
+                    fullName: true,
                     avatarUrl: true,
                   },
                 },
@@ -225,14 +358,72 @@ export class ReportCasesService {
       throw new NotFoundException('Report case not found');
     }
 
-    // Earlier cases about the same target
-    const earlierCases = await this.prisma.reportCase.findMany({
+    // Fetch all reports matching this targetKey across all cases
+    const allReportsForTarget = await this.prisma.report.findMany({
+      where: { targetKey: kase.targetKey },
+      include: {
+        reporter: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            status: true,
+            createdAt: true,
+            profile: {
+              select: {
+                username: true,
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const reportMap = new Map<string, any>();
+    for (const r of [...kase.reports, ...allReportsForTarget]) {
+      reportMap.set(r.id, {
+        id: r.id,
+        caseId: r.caseId,
+        reporterId: r.reporterId,
+        reason: r.reason,
+        details: r.details,
+        createdAt: r.createdAt,
+        status: kase.status,
+        reporter: r.reporter,
+      });
+    }
+    const combinedReports = Array.from(reportMap.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    const reasonsCountMap: Record<string, number> = {};
+    for (const r of combinedReports) {
+      if (r.reason) {
+        reasonsCountMap[r.reason] = (reasonsCountMap[r.reason] || 0) + 1;
+      }
+    }
+    const reasonsBreakdown = Object.entries(reasonsCountMap)
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const firstReportedAt =
+      combinedReports.length > 0
+        ? combinedReports[combinedReports.length - 1].createdAt
+        : kase.firstReportedAt;
+    const lastReportedAt =
+      combinedReports.length > 0 ? combinedReports[0].createdAt : kase.lastReportedAt;
+
+    // Earlier / related cases for this target
+    const relatedCases = await this.prisma.reportCase.findMany({
       where: {
         targetKey: kase.targetKey,
         id: { not: kase.id },
       },
       orderBy: { firstReportedAt: 'desc' },
-      take: 5,
+      take: 10,
       select: {
         id: true,
         status: true,
@@ -246,7 +437,13 @@ export class ReportCasesService {
 
     return {
       ...kase,
-      earlierCases,
+      reports: combinedReports,
+      totalReportsCount: combinedReports.length,
+      reportCount: combinedReports.length,
+      reasonsBreakdown,
+      firstReportedAt,
+      lastReportedAt,
+      relatedCases,
     };
   }
 
@@ -328,10 +525,13 @@ export class ReportCasesService {
     let revokeReason = '';
 
     await this.prisma.$transaction(async (tx) => {
-      // Atomic claim & status update
+      // Atomic claim & status update for this target's open cases
       const claimResult = await tx.reportCase.updateMany({
         where: {
-          id,
+          OR: [
+            { id },
+            { targetKey: kase.targetKey },
+          ],
           status: { in: [CaseStatus.PENDING, CaseStatus.UNDER_REVIEW] },
         },
         data: {
@@ -343,7 +543,7 @@ export class ReportCasesService {
         },
       });
 
-      if (claimResult.count !== 1) {
+      if (claimResult.count < 1) {
         throw new ConflictException('Case has already been decided or updated by another administrator');
       }
 
