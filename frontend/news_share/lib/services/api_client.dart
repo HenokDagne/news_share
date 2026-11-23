@@ -853,6 +853,26 @@ class ApiClient {
     await _sendRequest('DELETE', '/posts/$postId/save');
   }
 
+  Future<List<Map<String, dynamic>>> getSavedPosts({int limit = 50, String? cursor}) async {
+    final queryParams = <String, String>{
+      'limit': limit.toString(),
+      if (cursor != null) 'cursor': cursor,
+    };
+    final uri = Uri.parse('$baseUrl/me/saved').replace(queryParameters: queryParams);
+    final res = await http.get(uri, headers: _headers());
+    final data = _parseResponse(res);
+    if (data is Map && data['data'] is List) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+    if (data is Map && data['items'] is List) {
+      return List<Map<String, dynamic>>.from(data['items']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
+    }
+    return [];
+  }
+
   // ===================== PERSONAL ACTIVITY & ACCOUNT STATUS =====================
 
   Future<Map<String, dynamic>> getAccountStatus() async {

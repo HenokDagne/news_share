@@ -5,6 +5,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../services/api_client.dart';
 import '../moderation/post_actions_sheet.dart';
 import 'delete_post.dart';
 
@@ -41,29 +42,25 @@ class _PostCardState extends State<PostCard> {
 
   // ---------------- IMAGE ----------------
   Widget _buildImage() {
-    if (widget.imageUrl == null || widget.imageUrl!.isEmpty) {
-      return Image.asset(
-        'assets/images/images.png',
-        height: 200,
-        width: double.infinity,
-        fit: BoxFit.cover,
-      );
+    if (widget.imageUrl == null || widget.imageUrl!.trim().isEmpty) {
+      return const SizedBox.shrink();
     }
 
-    if (widget.imageUrl!.startsWith('http')) {
-      return Image.network(
-        widget.imageUrl!,
-        height: 200,
-        width: double.infinity,
-        fit: BoxFit.cover,
-      );
+    String url = widget.imageUrl!.trim();
+    if (!url.startsWith('http')) {
+      if (url.startsWith('/')) {
+        url = '${ApiClient.instance.baseUrl}$url';
+      } else {
+        url = '${ApiClient.instance.baseUrl}/$url';
+      }
     }
 
-    return Image.file(
-      File(widget.imageUrl!),
+    return Image.network(
+      url,
       height: 200,
       width: double.infinity,
       fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
     );
   }
 

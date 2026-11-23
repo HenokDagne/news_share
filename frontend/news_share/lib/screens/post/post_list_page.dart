@@ -4,6 +4,7 @@
 */
 
 import 'package:flutter/material.dart';
+import '../../services/api_client.dart';
 import 'post_fetcher.dart';
 import 'post_card.dart';
 
@@ -65,11 +66,26 @@ class _PostListPageState extends State<PostListPage> {
             onEdit: () {
               // TODO: implement edit action
             },
-            onDelete: () {
-              // TODO: implement delete action
-              setState(() {
-                posts.removeAt(index);
-              });
+            onDelete: () async {
+              final postId = post['id']?.toString() ?? '';
+              if (postId.isEmpty) return;
+              try {
+                await ApiClient.instance.deletePost(postId);
+                if (mounted) {
+                  setState(() {
+                    posts.removeAt(index);
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Post deleted successfully')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete post: $e')),
+                  );
+                }
+              }
             },
             isLoading: isLoading, // optional, shows skeleton if true
           );

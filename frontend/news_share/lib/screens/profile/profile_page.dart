@@ -18,7 +18,9 @@ import '../home/bottom_nav.dart';
 import '../home/home_page.dart';
 import '../post/post_page.dart';
 import '../notification/notification_page.dart';
+import '../moderation/post_actions_sheet.dart';
 import 'profile_edit_screen.dart';
+import 'followers_following_page.dart';
 import '../users/user_list.dart';
 import '../auth/login.dart';
 
@@ -41,6 +43,7 @@ class _ProfilePageState extends State<ProfilePage> {
   CurrentUserModel? _myProfile;
   Map<String, dynamic>? _targetProfile;
   List<Map<String, dynamic>> _userPosts = [];
+  List<Map<String, dynamic>> _savedPosts = [];
   List<Map<String, dynamic>> _suggestedUsers = [];
 
   bool _isFollowing = false;
@@ -51,6 +54,19 @@ class _ProfilePageState extends State<ProfilePage> {
   bool get _isOwnProfile {
     final myId = ApiClient.instance.currentUserId;
     return widget.userId == null || (myId != null && myId == widget.userId);
+  }
+
+  List<Map<String, dynamic>> get _currentTabPosts {
+    if (_selectedTabIndex == 0) {
+      return _userPosts;
+    } else if (_selectedTabIndex == 1) {
+      return _userPosts.where((p) {
+        final img = p['imageUrl']?.toString() ?? p['image_url']?.toString();
+        return img != null && img.trim().isNotEmpty;
+      }).toList();
+    } else {
+      return _savedPosts.isNotEmpty ? _savedPosts : _userPosts;
+    }
   }
 
   @override
@@ -79,10 +95,12 @@ class _ProfilePageState extends State<ProfilePage> {
           ApiClient.instance.getUserPosts(myId).catchError((_) => <Map<String, dynamic>>[]),
           ApiClient.instance.getUsers(limit: 10).catchError((_) => <Map<String, dynamic>>[]),
           ApiClient.instance.getFollowStatus(myId).catchError((_) => <String, bool>{}),
+          ApiClient.instance.getSavedPosts().catchError((_) => <Map<String, dynamic>>[]),
         ]);
 
         final posts = results[0] as List<Map<String, dynamic>>;
         final users = results[1] as List<Map<String, dynamic>>;
+        final saved = results[3] as List<Map<String, dynamic>>;
 
         // Also fetch follow stats for exact counts
         int followers = 0;
@@ -97,6 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
           setState(() {
             _myProfile = me;
             _userPosts = posts;
+            _savedPosts = saved;
             _suggestedUsers = users.where((u) => u['id'] != myId).toList();
             _followersCount = followers;
             _followingCount = following;
@@ -318,6 +337,29 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _openFollowersFollowing(int initialTabIndex) {
+    final targetId = widget.userId ?? ApiClient.instance.currentUserId;
+    if (targetId == null || targetId.isEmpty) return;
+    final uname = _isOwnProfile
+        ? (_myProfile?.username ?? 'Profile')
+        : (_targetProfile?['username']?.toString() ?? 'Profile');
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FollowersFollowingPage(
+          userId: targetId,
+          username: uname,
+          initialTabIndex: initialTabIndex,
+          initialFollowersCount: _followersCount,
+          initialFollowingCount: _followingCount,
+        ),
+      ),
+    ).then((_) {
+      _loadAllProfileData();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -489,8 +531,16 @@ class _ProfilePageState extends State<ProfilePage> {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _buildStatColumn('${_userPosts.length}', 'posts'),
-                          _buildStatColumn('$_followersCount', 'followers'),
-                          _buildStatColumn('$_followingCount', 'following'),
+                          _buildStatColumn(
+                            '$_followersCount',
+                            'followers',
+                            onTap: () => _openFollowersFollowing(0),
+                          ),
+                          _buildStatColumn(
+                            '$_followingCount',
+                            'following',
+                            onTap: () => _openFollowersFollowing(1),
+                          ),
                         ],
                       ),
                     ),
@@ -807,7 +857,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
 
-              if (_isHighlightsExpanded) ...[
+              if (_isHighlightsExpanded && _isOwnProfile) ...[
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 84,
@@ -815,34 +865,32 @@ class _ProfilePageState extends State<ProfilePage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     scrollDirection: Axis.horizontal,
                     children: [
-                      // "New" circle button with [+]
-                      Column(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white24, width: 1.2),
-                              color: const Color(0xFF14171E),
+                      // Real "New" highlight creation button for own profile
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PostPage()));
+                        },
+                        borderRadius: BorderRadius.circular(30),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white24, width: 1.2),
+                                color: const Color(0xFF14171E),
+                              ),
+                              child: const Icon(Icons.add, color: Colors.white, size: 26),
                             ),
-                            child: const Icon(Icons.add, color: Colors.white, size: 26),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'New',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                        ],
+                            const SizedBox(height: 6),
+                            const Text(
+                              'New',
+                              style: TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 16),
-
-                      // Placeholder story circles matching screenshot
-                      _buildHighlightCircle('News'),
-                      const SizedBox(width: 16),
-                      _buildHighlightCircle('Events'),
-                      const SizedBox(width: 16),
-                      _buildHighlightCircle('Updates'),
                     ],
                   ),
                 ),
@@ -850,7 +898,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
               const SizedBox(height: 14),
 
-              // ===================== 6. 3 TABS (GRID, REELS, TAGGED/SAVED) =====================
+              // ===================== 6. 3 TABS (GRID, MEDIA/REELS, TAGGED/SAVED) =====================
               Container(
                 decoration: const BoxDecoration(
                   border: Border(
@@ -860,14 +908,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Row(
                   children: [
                     _buildTabItem(icon: Icons.grid_on_sharp, index: 0),
-                    _buildTabItem(icon: Icons.sync_alt_rounded, index: 1),
-                    _buildTabItem(icon: Icons.person_pin_outlined, index: 2),
+                    _buildTabItem(icon: Icons.videocam_outlined, index: 1),
+                    _buildTabItem(icon: Icons.bookmark_outline, index: 2),
                   ],
                 ),
               ),
 
               // ===================== 7. 3-COLUMN SQUARE POSTS GRID =====================
-              if (_userPosts.isEmpty)
+              if (_currentTabPosts.isEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 48),
                   alignment: Alignment.center,
@@ -880,24 +928,36 @@ class _ProfilePageState extends State<ProfilePage> {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white24, width: 2),
                         ),
-                        child: const Icon(Icons.camera_alt_outlined, color: Colors.white54, size: 34),
+                        child: Icon(
+                          _selectedTabIndex == 2
+                              ? Icons.bookmark_border
+                              : (_selectedTabIndex == 1 ? Icons.videocam_outlined : Icons.camera_alt_outlined),
+                          color: Colors.white54,
+                          size: 34,
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Share Photos and Videos',
-                        style: TextStyle(
+                      Text(
+                        _selectedTabIndex == 2
+                            ? 'No Saved Posts'
+                            : (_selectedTabIndex == 1 ? 'No Media Posts' : 'Share Photos and Videos'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'When you share news or updates, they appear on your profile.',
+                      Text(
+                        _selectedTabIndex == 2
+                            ? 'Save posts from the feed to view them here later.'
+                            : (_selectedTabIndex == 1
+                                ? 'Posts with images and media will appear here.'
+                                : 'When you share news or updates, they appear on your profile.'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white60, fontSize: 13),
+                        style: const TextStyle(color: Colors.white60, fontSize: 13),
                       ),
-                      if (_isOwnProfile) ...[
+                      if (_isOwnProfile && _selectedTabIndex == 0) ...[
                         const SizedBox(height: 16),
                         TextButton(
                           onPressed: () {
@@ -920,7 +980,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _userPosts.length,
+                  itemCount: _currentTabPosts.length,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
                     crossAxisSpacing: 2,
@@ -928,19 +988,38 @@ class _ProfilePageState extends State<ProfilePage> {
                     childAspectRatio: 1.0,
                   ),
                   itemBuilder: (context, index) {
-                    final post = _userPosts[index];
-                    final imageUrl = post['imageUrl']?.toString();
+                    final post = _currentTabPosts[index];
+                    final rawImage = post['imageUrl']?.toString() ?? post['image_url']?.toString();
+                    final resolvedImage = _resolveMediaUrl(rawImage);
                     final title = post['title']?.toString() ?? 'News';
+                    final postId = post['id']?.toString() ?? '';
 
-                    return Container(
-                      color: const Color(0xFF14171E),
-                      child: (imageUrl != null && imageUrl.startsWith('http'))
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => _buildPostTilePlaceholder(title),
-                            )
-                          : _buildPostTilePlaceholder(title),
+                    return GestureDetector(
+                      onTap: () {
+                        if (postId.isNotEmpty) {
+                          PostActionsSheet.show(
+                            context,
+                            postId: postId,
+                            postUserId: post['userId']?.toString() ?? (post['author'] as Map?)?['id']?.toString(),
+                            postTitle: title,
+                            postUrl: resolvedImage,
+                            isSaved: post['isSaved'] == true,
+                            onDelete: () {
+                              _loadAllProfileData();
+                            },
+                          );
+                        }
+                      },
+                      child: Container(
+                        color: const Color(0xFF14171E),
+                        child: (resolvedImage != null && resolvedImage.startsWith('http'))
+                            ? Image.network(
+                                resolvedImage,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => _buildPostTilePlaceholder(title),
+                              )
+                            : _buildPostTilePlaceholder(title),
+                      ),
                     );
                   },
                 ),
@@ -1006,28 +1085,32 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildStatColumn(String count, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          count,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+  Widget _buildStatColumn(String count, String label, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            count,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1130,6 +1213,16 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
     );
+  }
+
+  String? _resolveMediaUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return null;
+    final trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    final base = ApiClient.instance.baseUrl;
+    return trimmed.startsWith('/') ? '$base$trimmed' : '$base/$trimmed';
   }
 
   Widget _buildHighlightCircle(String label) {
