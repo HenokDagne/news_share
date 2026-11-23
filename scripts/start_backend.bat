@@ -33,5 +33,5 @@ echo.
 echo ===================================================
 echo [3/3] Starting NestJS Backend Server on port 3000...
 echo ===================================================
-cd /d "%~dp0backend"
+cd /d "%~dp0..\backend"
 npm run start:dev

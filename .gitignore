@@ -1,95 +1,26 @@
-# OS generated files
+# ==========================================
+# OS & System Files
+# ==========================================
 .DS_Store
 Thumbs.db
 *.swp
 *.swo
 
-# IDE/Editor
-.vscode/
+# ==========================================
+# IDE & Editor Files
+# ==========================================
 .idea/
 *.iml
 *.ipr
 *.iws
-.atom/
-.history/
+**/.vscode/
+!/.vscode/
+!/.vscode/settings.json
 
-# Dependency directories
-**/node_modules/
-.pub-cache/
-.dart_tool/
-
-# Flutter build outputs
-/build/
-**/build/
-**/ios/Flutter/.last_build_id
-.flutter-plugins-dependencies
-.pub/
-/coverage/
-
-# Gradle distribution caches & wrapper dists (DO NOT version-control)
-.gradle/
-**/.gradle/
-wrapper/dists/
-**/wrapper/dists/
-**/android/wrapper/dists/
-**/android/wrapper/
-**/android/local.properties
-**/android/captures/
-**/android/.gradle/
-*.apk
-*.aab
-*.ap_
-
-# Ensure required Gradle wrapper executables and properties are preserved
-!**/gradle/wrapper/gradle-wrapper.jar
-!**/gradle/wrapper/gradle-wrapper.properties
-!**/gradlew
-!**/gradlew.bat
-
-# Django/Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-
-# Backend Django
-backend/news_server/db.sqlite3
-backend/news_server/.env
-backend/news_server/__pycache__/
-backend/news_server/**/*.pyc
-
-# Frontend Flutter
-frontend/news_share/.env
-frontend/news_share/.dart_tool/
-frontend/news_share/build/
-frontend/news_share/android/.gradle/
-frontend/news_share/android/app/google-services.json
-**/google-services.json
-frontend/news_share/ios/Runner/GoogleService-Info.plist
-**/GoogleService-Info.plist
-**/firebase_app_id_file.json
-frontend/news_share/firebase.json
-**/firebase.json
-# Supabase CLI artifacts
-frontend/news_share/supabase/.branches/
-frontend/news_share/supabase/.temp/
-
-# Flutter Web
-frontend/news_share/web/favicon.png
-frontend/news_share/web/icons/
-frontend/news_share/web/index.html
-frontend/news_share/web/manifest.json
-
-# Logs & Databases
-*.log
-*.sql
-*.sqlite
-*.sqlite3
-
-# Ignore all .env files anywhere (NEVER commit to GitHub)
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
+# Exclude sensitive environment variables anywhere in the repo
 .env
 .env.*
 *.env
@@ -98,25 +29,97 @@ frontend/news_share/web/manifest.json
 **/.env.*
 **/*.env
 **/*.env.*
-backend/news_share_api/.env
 
-# Temporary files
+# PRESERVE environment example templates
+!**/.env.example
+!**/*.env.example
+!.env.example
+
+# ==========================================
+# Log Files & Diagnostic Dumps
+# ==========================================
+*.log
+pg.log
+test_err.log
+test_out.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================================
+# Node.js & Web App Dependencies & Builds
+# ==========================================
+**/node_modules/
+**/.next/
+dist/
+**/dist/
+out/
+**/out/
+
+# ==========================================
+# Databases & Local Data
+# ==========================================
+*.sql
+*.sqlite
+*.sqlite3
+**/storage/backups/
+
+# ==========================================
+# Flutter / Dart Dependencies & Builds
+# ==========================================
+.pub-cache/
+.dart_tool/
+**/.dart_tool/
+.pub/
+/coverage/
+**/build/
+build/
+.flutter-plugins-dependencies
+**/ios/Flutter/.last_build_id
+generated_plugin_registrant.dart
+frontend/news_share/lib/firebase_options.dart
+
+# ==========================================
+# Android & Gradle Build Artifacts
+# ==========================================
+.gradle/
+**/.gradle/
+**/android/.gradle/
+**/android/local.properties
+**/android/captures/
+captures/
+.externalNativeBuild/
+wrapper/dists/
+**/wrapper/dists/
+**/android/wrapper/dists/
+**/android/wrapper/
+*.apk
+*.aab
+*.ap_
+*.class
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase_app_id_file.json
+**/firebase.json
+
+# PRESERVE required Gradle wrapper executables and properties
+!**/gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.properties
+!**/gradlew
+!**/gradlew.bat
+
+# ==========================================
+# Supabase & Cloud Artifacts
+# ==========================================
+frontend/news_share/supabase/.branches/
+frontend/news_share/supabase/.temp/
+
+# ==========================================
+# Temporary & Cache Files
+# ==========================================
 *.tmp
 *.temp
 *.bak
-
-# IDE specific
-out/
-
-# Android Studio
-captures/
-.externalNativeBuild/
-
-# Flutter specific
-generated_plugin_registrant.dart
-
-# Miscellaneous
-*.class
+.history/
 migrate_working_dir/
-frontend/news_share/lib/firebase_options.dart
-

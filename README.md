@@ -1,124 +1,107 @@
-# NewsShare
+# News Share Monorepo
 
-<p align="center">
-   <img src="frontend/news_share/assets/images/supabase.png" alt="Supabase Logo" width="96"/>
-	<img src="https://storage.googleapis.com/cms-storage-bucket/0dbfcc7a59cd1cf16282.png" alt="Flutter Logo" width="48"/>
-</p>
-
-<h2 align="center">A modern, secure, and scalable cross-platform news sharing app built with <a href="https://flutter.dev/">Flutter</a> and <a href="https://supabase.com/">Supabase</a>.</h2>
+A modern, full-stack, cross-platform news sharing and social interaction ecosystem built with **NestJS**, **Next.js**, and **Flutter**.
 
 ---
 
-## About
+## 1. Repository Structure
 
-**NewsShare** is a full-featured news aggregation and social platform. Users can browse, search, and share news from top sources, follow other users, and receive real-time notifications. The app is designed for security, scalability, and a seamless user experience across mobile, web, and desktop.
-
-## Project SRS
-
-- Detailed Software Requirements Specification (SRS): [Google Doc](https://docs.google.com/document/d/12qh8hS6bCbr1lodMh8fbr4hANuIuXpUY/edit?usp=sharing&ouid=108335093438878048436&rtpof=true&sd=true)
-
-## ER Diagram
-
-- ER diagram (dbdiagram.io): [View diagram](https://dbdiagram.io/d/696e9027d6e030a024802b87)
-
-### Why Supabase?
-
-- **Authentication**: Secure user sign-up, login, and social auth (Google) using Supabase Auth.
-- **Database**: All user data, posts, and relationships are stored in a scalable PostgreSQL database managed by Supabase.
-- **Storage**: User avatars and media are stored and served securely via Supabase Storage.
-- **Realtime**: Follows, notifications, and posts update instantly using Supabase's realtime features.
-
-<details>
-<summary><strong>Supabase Services Used</strong></summary>
-
-- 🔐 **Auth**: Email/password & Google OAuth
-- 🗄️ **Database**: PostgreSQL (hosted by Supabase)
-- 🗂️ **Storage**: For user avatars and media
-- ⚡ **Realtime**: Live updates for follows, notifications, and posts
-- 🔒 **Row Level Security**: All data access is protected by RLS policies
-
-</details>
+```text
+news_share/
+├── .github/
+│   └── workflows/
+│       ├── admin-ci.yml        # CI pipeline for Admin Portal (Next.js)
+│       ├── backend-ci.yml      # CI pipeline for Backend API (NestJS)
+│       └── flutter-ci.yml      # CI pipeline for Mobile App (Flutter)
+├── .vscode/                    # Workspace configuration & Java/Gradle runtime settings
+├── admin/                      # Next.js 14 administrator web portal
+├── backend/                    # NestJS REST API with PostgreSQL & Prisma ORM
+├── frontend/                   # Flutter cross-platform mobile client (in frontend/news_share)
+├── scripts/                    # Local development & service startup scripts
+│   ├── run_postgres.bat        # Foreground PostgreSQL runner
+│   ├── start_db.bat            # PostgreSQL daemon starter
+│   └── start_backend.bat       # Starts PostgreSQL, sets ADB reverse proxy, & launches backend
+├── docs/                       # Project architecture & deployment guides
+│   ├── deployment.md           # Independent deployment guides (Vercel, Render, Flutter)
+│   └── architecture.md         # Monorepo architecture, data flow, & security model
+├── .gitignore                  # Monorepo-wide Git ignore rules
+└── README.md                   # This overview document
+```
 
 ---
 
-## Features
+## 2. Applications Overview
 
-- 📰 Browse the latest news from multiple sources (Tesla, Apple, TechCrunch, WSJ, Business, etc.)
-- 🔍 Search and filter news articles
-- 👤 Secure user authentication (Google Sign-In, Supabase Auth)
-- 🏠 Personalized home feed
-- 👥 Follow/unfollow users
-- 📢 Real-time notifications and updates
-- 📝 Post, share on news
-- 🖼️ Upload and manage profile avatars
-- 📱 Responsive UI for Android, iOS, Web, Windows, Mac, Linux
-- 🌙 Light & dark mode support
-
-## Tech Stack
-
-- **Flutter** (Dart)
-- **Supabase** (Auth, Storage, PostgreSQL, Realtime)
-- **NewsAPI** ([newsapi.org](https://newsapi.org/))
-- **Google Sign-In**
-- **Provider/State Management**
+| Application      | Path                   | Technology                       | Primary Role                                 | Deployment Target           |
+| :--------------- | :--------------------- | :------------------------------- | :------------------------------------------- | :-------------------------- |
+| **Backend API**  | `backend/`             | NestJS 10, Prisma 6, PostgreSQL  | REST API, WebSockets, RBAC, Backups          | **Render**                  |
+| **Admin Portal** | `admin/`               | Next.js 14, Tailwind CSS, Lucide | Staff dashboard, moderation, audit, recovery | **Vercel**                  |
+| **Mobile App**   | `frontend/news_share/` | Flutter 3.x, Dart 3.x, Provider  | Full-screen news feed, social engagement     | **Google Play / App Store** |
 
 ---
 
-## Getting Started
+## 3. Local Development Quickstart
 
-### Prerequisites
+### 3.1 Start Services via Scripts (`scripts/`)
+On Windows, use the bundled scripts located in `scripts/`:
 
-- [Flutter SDK](https://flutter.dev/docs/get-started/install) (3.x recommended)
-- Dart
-- [Supabase account &amp; project](https://app.supabase.com/)
-- [NewsAPI key](https://newsapi.org/)
-
-### Setup
-
-1. **Clone the repository:**
-   ```bash
-   git clone <your-repo-url>
-   cd news_share_full_project/frontend/news_share
+1. **Start PostgreSQL**:
+   ```cmd
+   scripts\start_db.bat
    ```
-2. **Install dependencies:**
-   ```bash
-   flutter pub get
-   ```
-3. **Configure environment variables:**
-   - Copy `.env.example` to `.env` and fill in your keys:
-     ```env
-     NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_supabase_anon_key
-     NEWS_API_KEY=your_newsapi_key
-     client_ID=your_google_client_id
-     ```
-   - Never commit your real `.env` file to version control.
-4. **Run the app:**
-   ```bash
-   flutter run
+2. **Start Backend with Database & ADB Port Forwarding**:
+   ```cmd
+   scripts\start_backend.bat
    ```
 
-## Folder Structure
+### 3.2 Manual Application Startup
 
-- `lib/` — Main Flutter app code
-- `lib/screens/` — UI screens (home, auth, profile, news, etc.)
-- `lib/models/` — Data models
-- `lib/services/` — API and backend services
-- `assets/` — Images, JSON, and other static assets
-- `.env` — Environment variables (never commit secrets!)
+#### Backend API (`backend/`):
+```bash
+cd backend
+cp .env.example .env            # Configure DATABASE_URL and secrets
+npm install
+npm run prisma:generate
+npx prisma migrate dev
+npm run start:dev               # Runs on http://localhost:3000
+```
 
-## Security
+#### Admin Portal (`admin/`):
+```bash
+cd admin
+cp .env.local.example .env.local # Verify NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1
+npm install
+npm run dev                     # Runs on http://localhost:3001
+```
 
-- **Never commit your real API keys or secrets.** Use the `.env` file and add it to `.gitignore`.
-- All sensitive keys are loaded at runtime and never hardcoded in the source.
-- Supabase Row Level Security (RLS) is enabled for all tables.
-
-## Contributing
-
-Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+#### Flutter Mobile Client (`frontend/news_share/`):
+```bash
+cd frontend/news_share
+cp .env.example .env            # Set API_BASE_URL=http://localhost:3000/api/v1
+flutter pub get
+flutter run
+```
 
 ---
 
-## License
+## 4. Documentation Links
 
-This project is licensed under the MIT License.
+* 🚀 **[Deployment Guide](docs/deployment.md)**: Independent deployment procedures for Vercel, Render, and Flutter mobile builds.
+* 🏛️ **[Architecture Guide](docs/architecture.md)**: Architectural patterns, database schema, security model, and communication topology.
+
+---
+
+## 5. Continuous Integration (CI/CD)
+
+The repository uses path-filtered GitHub Actions workflows located in `.github/workflows/`:
+* **`admin-ci.yml`**: Runs on changes to `admin/**` (Type-checks & builds Next.js).
+* **`backend-ci.yml`**: Runs on changes to `backend/**` (Generates Prisma client, compiles NestJS, and executes tests).
+* **`flutter-ci.yml`**: Runs on changes to `frontend/**` (Fetches Flutter dependencies and runs `flutter analyze`).
+
+---
+
+## 6. Monorepo Principles & Constraints
+
+1. **No Shared Submodule Coupling**: Single Git repository with independent project roots.
+2. **Subdirectory Isolation**: Subdirectories `admin/`, `backend/`, and `frontend/` are self-contained and run on independent dependency trees.
+3. **No Uncommitted Secrets or Logs**: Environment files (`.env*`) and runtime logs are strictly ignored by `.gitignore` (with `.env.example` templates preserved).
