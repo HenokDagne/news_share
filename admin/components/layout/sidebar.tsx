@@ -13,6 +13,14 @@ import {
   Database,
   LogOut,
   Sparkles,
+  ShieldCheck,
+  Scale,
+  FileText,
+  UserCheck,
+  ClipboardCheck,
+  AlertTriangle,
+  Siren,
+  GitPullRequest,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
@@ -20,7 +28,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user, hasPermission, logout } = useAuth();
 
-  const navItems = [
+  const adminNavItems = [
     {
       label: 'Dashboard',
       href: '/',
@@ -65,7 +73,62 @@ export function Sidebar() {
     },
   ];
 
-  const filteredNav = navItems.filter(
+  const complianceNavItems = [
+    {
+      label: 'Governance Overview',
+      href: '/compliance',
+      icon: ShieldCheck,
+      permission: 'COMPLIANCE_VIEW',
+    },
+    {
+      label: 'Legal & Compliance',
+      href: '/compliance/legal',
+      icon: Scale,
+      permission: 'COMPLIANCE_VIEW',
+    },
+    {
+      label: 'Security Policies',
+      href: '/compliance/policies',
+      icon: FileText,
+      permission: 'COMPLIANCE_VIEW',
+    },
+    {
+      label: 'Privacy & Protection',
+      href: '/compliance/privacy',
+      icon: UserCheck,
+      permission: 'PRIVACY_MANAGE',
+    },
+    {
+      label: 'Security Reviews',
+      href: '/compliance/reviews',
+      icon: ClipboardCheck,
+      permission: 'COMPLIANCE_VIEW',
+    },
+    {
+      label: 'Risk Register',
+      href: '/compliance/risks',
+      icon: AlertTriangle,
+      permission: 'COMPLIANCE_VIEW',
+    },
+    {
+      label: 'Incident Management',
+      href: '/compliance/incidents',
+      icon: Siren,
+      permission: 'INCIDENTS_MANAGE',
+    },
+    {
+      label: 'Change Management',
+      href: '/compliance/changes',
+      icon: GitPullRequest,
+      permission: 'CHANGES_MANAGE',
+    },
+  ];
+
+  const filteredAdminNav = adminNavItems.filter(
+    (item) => !item.permission || hasPermission(item.permission),
+  );
+
+  const filteredComplianceNav = complianceNavItems.filter(
     (item) => !item.permission || hasPermission(item.permission),
   );
 
@@ -87,36 +150,73 @@ export function Sidebar() {
       </div>
 
       {/* Nav List */}
-      <nav className="flex-1 space-y-1.5 overflow-y-auto p-4">
-        <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-          Administration
-        </div>
-        {filteredNav.map((item) => {
-          const isActive =
-            item.href === '/'
-              ? pathname === '/'
-              : pathname.startsWith(item.href);
-          const Icon = item.icon;
+      <nav className="flex-1 space-y-4 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {/* Section 1: Administration */}
+        <div className="space-y-1">
+          <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+            Administration
+          </div>
+          {filteredAdminNav.map((item) => {
+            const isActive =
+              item.href === '/'
+                ? pathname === '/'
+                : pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+            const Icon = item.icon;
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-gradient-to-r from-[#00F2FE]/15 to-transparent text-white border-l-2 border-[#00F2FE] font-semibold'
-                  : 'text-gray-400 hover:bg-[#181B22] hover:text-gray-200'
-              }`}
-            >
-              <Icon
-                className={`h-4 w-4 transition-colors ${
-                  isActive ? 'text-[#00F2FE]' : 'text-gray-400 group-hover:text-white'
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`group flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-medium transition-all ${
+                  isActive
+                    ? 'bg-gradient-to-r from-[#00F2FE]/15 to-transparent text-white border-l-2 border-[#00F2FE] font-semibold'
+                    : 'text-gray-400 hover:bg-[#181B22] hover:text-gray-200'
                 }`}
-              />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+              >
+                <Icon
+                  className={`h-4 w-4 transition-colors ${
+                    isActive ? 'text-[#00F2FE]' : 'text-gray-400 group-hover:text-white'
+                  }`}
+                />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Section 2: Compliance & Governance */}
+        <div className="space-y-1 pt-2 border-t border-[#232733]/60">
+          <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-[#00F2FE]/80 flex items-center justify-between">
+            <span>Compliance & Gov</span>
+            <ShieldCheck className="h-3 w-3 text-[#00F2FE]" />
+          </div>
+          {filteredComplianceNav.map((item) => {
+            const isActive =
+              item.href === '/compliance'
+                ? pathname === '/compliance'
+                : pathname.startsWith(item.href);
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`group flex items-center gap-3 rounded-xl px-3.5 py-2 text-xs font-medium transition-all ${
+                  isActive
+                    ? 'bg-gradient-to-r from-[#00F2FE]/15 to-transparent text-white border-l-2 border-[#00F2FE] font-semibold'
+                    : 'text-gray-400 hover:bg-[#181B22] hover:text-gray-200'
+                }`}
+              >
+                <Icon
+                  className={`h-4 w-4 transition-colors ${
+                    isActive ? 'text-[#00F2FE]' : 'text-gray-400 group-hover:text-white'
+                  }`}
+                />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Staff User Footer */}

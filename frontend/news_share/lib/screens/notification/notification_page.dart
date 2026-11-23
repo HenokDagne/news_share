@@ -69,24 +69,16 @@ class _NotificationPageState extends State<NotificationPage> {
     final isAuthenticated = ApiClient.instance.isAuthenticated;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFc0c1c3),
-      appBar: const PreferredSize(
-        preferredSize: Size.fromHeight(70),
-        child: TopAppBar(),
+      backgroundColor: Colors.black,
+      appBar: const InstagramTopNavBar(
+        pageType: TopNavBarType.notifications,
+        title: 'Notifications',
       ),
       body: Container(
-        color: Colors.white,
-        margin: const EdgeInsets.only(top: 4),
+        color: Colors.black,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Text(
-                'Notification',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
             Expanded(
               child: isAuthenticated
                   ? FutureBuilder<List<NotificationData>>(
@@ -95,17 +87,19 @@ class _NotificationPageState extends State<NotificationPage> {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
                           return const Center(
-                            child: CircularProgressIndicator(),
+                            child: CircularProgressIndicator(color: Color(0xFF3797EF)),
                           );
                         }
                         if (snapshot.hasError) {
                           return Center(
-                            child: Text('Error: ${snapshot.error}'),
+                            child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white70)),
                           );
                         }
                         final items = snapshot.data ?? [];
                         if (items.isEmpty) {
-                          return const Center(child: Text('No notifications'));
+                          return const Center(
+                            child: Text('No notifications yet', style: TextStyle(color: Colors.white54, fontSize: 14)),
+                          );
                         }
 
                         return ListView.builder(
@@ -116,13 +110,13 @@ class _NotificationPageState extends State<NotificationPage> {
 
                             return Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 6,
+                                horizontal: 14,
+                                vertical: 5,
                               ),
                               child: Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius: BorderRadius.circular(12),
                                   onTap: () async {
                                     if (!n.isRead) {
                                       try {
@@ -139,19 +133,12 @@ class _NotificationPageState extends State<NotificationPage> {
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: n.isRead ? Colors.white : const Color(0xFFF0F5FF),
-                                      borderRadius: BorderRadius.circular(14),
+                                      color: n.isRead ? const Color(0xFF14171E) : const Color(0xFF1E2433),
+                                      borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: n.isRead ? Colors.grey.shade200 : const Color(0xFFC7D7FE),
+                                        color: n.isRead ? const Color(0xFF262A34) : const Color(0xFF3797EF).withOpacity(0.4),
                                         width: 1,
                                       ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.04),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
                                     ),
                                     child: Row(
                                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -159,16 +146,16 @@ class _NotificationPageState extends State<NotificationPage> {
                                         Stack(
                                           clipBehavior: Clip.none,
                                           children: [
-                                            n.buildAvatar(context, size: 48),
+                                            n.buildAvatar(context, size: 44),
                                             Positioned(
                                               bottom: -2,
                                               right: -2,
                                               child: Container(
                                                 padding: const EdgeInsets.all(3),
                                                 decoration: BoxDecoration(
-                                                  color: isFollow ? const Color(0xFF3B82F6) : const Color(0xFF10B981),
+                                                  color: isFollow ? const Color(0xFF3797EF) : const Color(0xFF10B981),
                                                   shape: BoxShape.circle,
-                                                  border: Border.all(color: Colors.white, width: 1.5),
+                                                  border: Border.all(color: Colors.black, width: 1.5),
                                                 ),
                                                 child: Icon(
                                                   isFollow ? Icons.person_add : Icons.article,
@@ -188,19 +175,19 @@ class _NotificationPageState extends State<NotificationPage> {
                                                 maxLines: 2,
                                                 overflow: TextOverflow.ellipsis,
                                                 text: TextSpan(
-                                                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                                                  style: const TextStyle(fontSize: 13, color: Colors.white),
                                                   children: [
                                                     if (n.actorFullName != null && n.actorFullName!.trim().isNotEmpty)
                                                       TextSpan(
                                                         text: '${n.actorFullName!.trim()} ',
-                                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                                                       ),
                                                     if (n.actorUsername != null && n.actorUsername!.trim().isNotEmpty)
                                                       TextSpan(
                                                         text: '@${n.actorUsername!.trim()} ',
-                                                        style: TextStyle(
+                                                        style: const TextStyle(
                                                           fontWeight: FontWeight.w600,
-                                                          color: Colors.blue.shade800,
+                                                          color: Color(0xFF38BDF8),
                                                         ),
                                                       ),
                                                     if (n.actorUsername != null && n.actorUsername!.trim().isNotEmpty)
@@ -208,8 +195,8 @@ class _NotificationPageState extends State<NotificationPage> {
                                                         text: isFollow
                                                             ? 'started following you'
                                                             : 'published a new post',
-                                                        style: TextStyle(
-                                                          color: Colors.grey.shade800,
+                                                        style: const TextStyle(
+                                                          color: Colors.white70,
                                                         ),
                                                       )
                                                     else
@@ -219,9 +206,9 @@ class _NotificationPageState extends State<NotificationPage> {
                                                             : (isFollow
                                                                 ? 'You have a new follower!'
                                                                 : 'You have a new notification!'),
-                                                        style: TextStyle(
+                                                        style: const TextStyle(
                                                           fontWeight: FontWeight.w500,
-                                                          color: Colors.grey.shade900,
+                                                          color: Colors.white,
                                                         ),
                                                       ),
                                                   ],
@@ -230,17 +217,17 @@ class _NotificationPageState extends State<NotificationPage> {
                                               const SizedBox(height: 4),
                                               Row(
                                                 children: [
-                                                  Icon(
+                                                  const Icon(
                                                     Icons.access_time,
                                                     size: 12,
-                                                    color: Colors.grey.shade500,
+                                                    color: Colors.white38,
                                                   ),
                                                   const SizedBox(width: 4),
                                                   Text(
                                                     n.time,
-                                                    style: TextStyle(
+                                                    style: const TextStyle(
                                                       fontSize: 11,
-                                                      color: Colors.grey.shade600,
+                                                      color: Colors.white38,
                                                       fontWeight: FontWeight.w500,
                                                     ),
                                                   ),
@@ -250,7 +237,7 @@ class _NotificationPageState extends State<NotificationPage> {
                                                       width: 6,
                                                       height: 6,
                                                       decoration: const BoxDecoration(
-                                                        color: Color(0xFF3B82F6),
+                                                        color: Color(0xFF3797EF),
                                                         shape: BoxShape.circle,
                                                       ),
                                                     ),
@@ -279,23 +266,29 @@ class _NotificationPageState extends State<NotificationPage> {
                             const Icon(
                               Icons.notifications_off_outlined,
                               size: 72,
+                              color: Colors.white38,
                             ),
                             const SizedBox(height: 16),
                             const Text(
                               'Sign in to view notifications',
                               style: TextStyle(
-                                fontSize: 22,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
                             const Text(
                               'Notifications stay private to each account.',
+                              style: TextStyle(color: Colors.white54),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 20),
                             ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF3797EF),
+                              ),
                               onPressed: () {
                                 Navigator.push(
                                   context,
@@ -304,7 +297,7 @@ class _NotificationPageState extends State<NotificationPage> {
                                   ),
                                 );
                               },
-                              child: const Text('Sign In'),
+                              child: const Text('Sign In', style: TextStyle(color: Colors.white)),
                             ),
                           ],
                         ),
@@ -317,6 +310,7 @@ class _NotificationPageState extends State<NotificationPage> {
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
         onChanged: _onNavTap,
+        isDark: true,
       ),
     );
   }

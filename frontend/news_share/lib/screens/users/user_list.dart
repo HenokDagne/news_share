@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
 import '../home/bottom_nav.dart';
 import '../home/home_page.dart';
+import '../home/top_app_bar.dart';
 import '../post/post_page.dart';
 import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
@@ -255,13 +256,21 @@ class _UserListPageState extends State<UserListPage> {
 
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: InstagramTopNavBar(
+        pageType: TopNavBarType.search,
+        searchController: _searchController,
+        onSearchChanged: (_) => _onSearchChanged(),
+        onClearSearch: () {
+          _searchController.clear();
+          FocusScope.of(context).unfocus();
+        },
+        onFilterTap: _showFilterSheet,
+      ),
       body: SafeArea(
+        top: false,
         child: Column(
           children: [
-            // ================= 1. TOP INSTAGRAM SEARCH BAR =================
-            _buildSearchBar(),
-
-            // ================= 2. CONTENT AREA =================
+            // ================= 1. CONTENT AREA =================
             Expanded(
               child: showSearchResults
                   ? _buildSearchResults()
@@ -289,53 +298,6 @@ class _UserListPageState extends State<UserListPage> {
         currentIndex: _currentIndex,
         onChanged: _onNavTap,
         isDark: true,
-      ),
-    );
-  }
-
-  // ================= TOP SEARCH BAR =================
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFF262626),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: TextField(
-                controller: _searchController,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                cursorColor: const Color(0xFF0095F6),
-                decoration: InputDecoration(
-                  hintText: 'Search',
-                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade400, size: 20),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? GestureDetector(
-                          onTap: () {
-                            _searchController.clear();
-                            FocusScope.of(context).unfocus();
-                          },
-                          child: Icon(Icons.cancel, color: Colors.grey.shade400, size: 18),
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 9),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.tune_rounded, color: Colors.white, size: 22),
-            tooltip: 'Filter',
-            onPressed: () => _showFilterSheet(),
-          ),
-        ],
       ),
     );
   }

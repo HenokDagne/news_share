@@ -42,6 +42,11 @@ enum Permission {
   ROLES_VIEW
   ROLES_MANAGE
   ACCESS_REVIEWS_MANAGE
+  COMPLIANCE_VIEW
+  COMPLIANCE_MANAGE
+  PRIVACY_MANAGE
+  INCIDENTS_MANAGE
+  CHANGES_MANAGE
 }
 
 enum RestrictionType {
@@ -153,6 +158,20 @@ model User {
   reviewCampaignsConducted AccessReviewCampaign[] @relation("CampaignConductor")
   reviewDecisionsReceived  AccessReviewDecision[] @relation("ReviewDecisionUser")
   reviewDecisionsConducted AccessReviewDecision[] @relation("ReviewDecisionReviewer")
+  legalObligationsCreated LegalObligation[] @relation("ObligationCreator")
+  securityPoliciesAuthored SecurityPolicy[] @relation("PolicyAuthor")
+  policyVersionsApproved PolicyVersion[] @relation("PolicyVersionApprover")
+  privacyRequests PrivacyRequest[] @relation("UserPrivacyRequests")
+  privacyRequestsResolved PrivacyRequest[] @relation("PrivacyRequestResolver")
+  consents ConsentRecord[] @relation("UserConsents")
+  dataBreachesRecorded DataBreachRecord[] @relation("BreachRecorder")
+  securityFindingsAssigned SecurityFinding[] @relation("FindingAssignee")
+  risksOwned RiskRegister[] @relation("RiskOwner")
+  incidentsLed SecurityIncident[] @relation("IncidentLead")
+  changeRequestsMade ChangeRequest[] @relation("ChangeRequester")
+  changeRequestsApproved ChangeRequest[] @relation("ChangeApprover")
+  blockedUsers UserBlock[] @relation("BlockerUsers")
+  blockedByUsers UserBlock[] @relation("BlockedUsers")
 
   @@index([status])
   @@index([role])
@@ -770,4 +789,322 @@ model AccessReviewDecision {
   @@index([campaignId])
   @@index([userId])
   @@map("access_review_decisions")
+}
+
+// ===================== COMPLIANCE & GOVERNANCE ENUMS =====================
+
+enum ComplianceStatus {
+  COMPLIANT
+  PARTIALLY_COMPLIANT
+  NON_COMPLIANT
+  UNDER_REVIEW
+}
+
+enum PolicyStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PrivacyRequestType {
+  DATA_ACCESS_EXPORT
+  DATA_CORRECTION
+  ACCOUNT_DELETION
+  RESTRICT_PROCESSING
+}
+
+enum PrivacyRequestStatus {
+  PENDING
+  UNDER_REVIEW
+  COMPLETED
+  REJECTED
+}
+
+enum RiskLikelihood {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum RiskImpact {
+  INSIGNIFICANT
+  MINOR
+  MODERATE
+  MAJOR
+  CRITICAL
+}
+
+enum RiskStatus {
+  IDENTIFIED
+  ASSESSING
+  MITIGATING
+  ACCEPTED
+  RESOLVED
+}
+
+enum IncidentSeverity {
+  P1_CRITICAL
+  P2_HIGH
+  P3_MEDIUM
+  P4_LOW
+}
+
+enum IncidentStatus {
+  REPORTED
+  INVESTIGATING
+  CONTAINED
+  RESOLVED
+  POST_MORTEM
+}
+
+enum ChangeRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY
+}
+
+enum ChangeRequestStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  IMPLEMENTED
+  ROLLED_BACK
+}
+
+// ===================== COMPLIANCE & GOVERNANCE MODELS =====================
+
+model LegalObligation {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title             String
+  regulation        String           // e.g., "Ethiopian Proclamation No. 1321/2024"
+  jurisdiction      String           @default("Ethiopia")
+  description       String
+  complianceStatus  ComplianceStatus @default(UNDER_REVIEW) @map("compliance_status")
+  responsiblePerson String           @map("responsible_person")
+  reviewCycleMonths Int              @default(12) @map("review_cycle_months")
+  lastReviewedAt    DateTime?        @map("last_reviewed_at") @db.Timestamptz(6)
+  nextReviewAt      DateTime         @map("next_review_at") @db.Timestamptz(6)
+  evidenceNotes     String?          @map("evidence_notes")
+  createdById       String           @map("created_by_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdBy         User             @relation("ObligationCreator", fields: [createdById], references: [id])
+
+  @@index([complianceStatus])
+  @@index([nextReviewAt])
+  @@map("legal_obligations")
+}
+
+model SecurityPolicy {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title          String
+  code           String          @unique // e.g., "POL-SEC-001", "POL-AUP-001"
+  category       String          // Acceptable Use, Access Control, Data Retention, etc.
+  status         PolicyStatus    @default(DRAFT)
+  currentVersion String          @default("1.0.0") @map("current_version")
+  summary        String
+  content        String          @db.Text
+  publishedAt    DateTime?       @map("published_at") @db.Timestamptz(6)
+  nextReviewDate DateTime        @map("next_review_date") @db.Timestamptz(6)
+  authorId       String          @map("author_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  author         User            @relation("PolicyAuthor", fields: [authorId], references: [id])
+  versions       PolicyVersion[]
+
+  @@index([status])
+  @@map("security_policies")
+}
+
+model PolicyVersion {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  policyId      String         @map("policy_id") @db.Uuid
+  versionNumber String         @map("version_number")
+  content       String         @db.Text
+  changeSummary String         @map("change_summary")
+  approvedById  String?        @map("approved_by_id") @db.Uuid
+  publishedAt   DateTime       @default(now()) @map("published_at") @db.Timestamptz(6)
+
+  policy        SecurityPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  approvedBy    User?          @relation("PolicyVersionApprover", fields: [approvedById], references: [id])
+
+  @@unique([policyId, versionNumber])
+  @@map("policy_versions")
+}
+
+model PrivacyRequest {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String               @map("user_id") @db.Uuid
+  requestType     PrivacyRequestType   @map("request_type")
+  status          PrivacyRequestStatus @default(PENDING)
+  details         String?
+  rejectionReason String?              @map("rejection_reason")
+  exportFileUrl   String?              @map("export_file_url")
+  resolvedById    String?              @map("resolved_by_id") @db.Uuid
+  resolvedAt      DateTime?            @map("resolved_at") @db.Timestamptz(6)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user            User                 @relation("UserPrivacyRequests", fields: [userId], references: [id], onDelete: Cascade)
+  resolvedBy      User?                @relation("PrivacyRequestResolver", fields: [resolvedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("privacy_requests")
+}
+
+model ConsentRecord {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  consentType   String    @map("consent_type") // e.g., "TERMS_OF_SERVICE", "ANALYTICS_DATA"
+  isGranted     Boolean   @default(true) @map("is_granted")
+  ipAddress     String?   @map("ip_address")
+  userAgent     String?   @map("user_agent")
+  policyVersion String?   @map("policy_version")
+  grantedAt     DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  user          User      @relation("UserConsents", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consentType])
+  @@map("consent_records")
+}
+
+model DataBreachRecord {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title               String
+  incidentRef         String?          @map("incident_ref")
+  severity            IncidentSeverity @default(P2_HIGH)
+  dataCategories      String[]         @map("data_categories") // e.g. ["EMAILS", "PASSWORDS"]
+  estimatedUsersHit   Int              @default(0) @map("estimated_users_hit")
+  detectedAt          DateTime         @map("detected_at") @db.Timestamptz(6)
+  containedAt         DateTime?        @map("contained_at") @db.Timestamptz(6)
+  authorityNotified   Boolean          @default(false) @map("authority_notified")
+  authorityNotifiedAt DateTime?        @map("authority_notified_at") @db.Timestamptz(6)
+  usersNotified       Boolean          @default(false) @map("users_notified")
+  remediationSummary  String           @map("remediation_summary")
+  recordedById        String           @map("recorded_by_id") @db.Uuid
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  recordedBy          User             @relation("BreachRecorder", fields: [recordedById], references: [id])
+
+  @@map("data_breach_records")
+}
+
+model SecurityReview {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title           String
+  reviewType      String            // e.g. "ACCESS_CONTROL_AUDIT", "VULNERABILITY_ASSESSMENT"
+  scope           String
+  leadAuditor     String            @map("lead_auditor")
+  scheduledDate   DateTime          @map("scheduled_date") @db.Timestamptz(6)
+  completedDate   DateTime?         @map("completed_date") @db.Timestamptz(6)
+  summaryFindings String?           @map("summary_findings")
+  findingsCount   Int               @default(0) @map("findings_count")
+  status          CaseStatus        @default(PENDING)
+  findings        SecurityFinding[]
+
+  @@map("security_reviews")
+}
+
+model SecurityFinding {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId        String         @map("review_id") @db.Uuid
+  title           String
+  severity        AuditSeverity  @default(MEDIUM)
+  description     String
+  remediationPlan String         @map("remediation_plan")
+  assignedToId    String         @map("assigned_to_id") @db.Uuid
+  deadline        DateTime       @db.Timestamptz(6)
+  resolvedAt      DateTime?      @map("resolved_at") @db.Timestamptz(6)
+  status          AlertStatus    @default(OPEN)
+
+  review          SecurityReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  assignedTo      User           @relation("FindingAssignee", fields: [assignedToId], references: [id])
+
+  @@map("security_findings")
+}
+
+model RiskRegister {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title          String
+  description    String
+  likelihood     RiskLikelihood @default(MEDIUM)
+  impact         RiskImpact     @default(MODERATE)
+  riskScore      Int            @default(9) @map("risk_score") // Likelihood (1-5) * Impact (1-5)
+  status         RiskStatus     @default(IDENTIFIED)
+  mitigationPlan String         @map("mitigation_plan")
+  ownerId        String         @map("owner_id") @db.Uuid
+  targetDate     DateTime       @map("target_date") @db.Timestamptz(6)
+  residualScore  Int?           @map("residual_score")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner          User           @relation("RiskOwner", fields: [ownerId], references: [id])
+
+  @@index([status])
+  @@index([riskScore(sort: Desc)])
+  @@map("risk_registers")
+}
+
+model SecurityIncident {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referenceNumber    String           @unique @map("reference_number") // e.g. "INC-2026-001"
+  title              String
+  category           String           // UNAUTHORIZED_ACCESS, DATA_LEAK, ACCOUNT_TAKEOVER
+  severity           IncidentSeverity @default(P2_HIGH)
+  status             IncidentStatus   @default(REPORTED)
+  description        String
+  containment        String?
+  rootCause          String?          @map("root_cause")
+  leadInvestigatorId String?          @map("lead_investigator_id") @db.Uuid
+  reportedAt         DateTime         @default(now()) @map("reported_at") @db.Timestamptz(6)
+  resolvedAt         DateTime?        @map("resolved_at") @db.Timestamptz(6)
+
+  leadInvestigator   User?            @relation("IncidentLead", fields: [leadInvestigatorId], references: [id])
+
+  @@index([status])
+  @@index([severity])
+  @@map("security_incidents")
+}
+
+model ChangeRequest {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String
+  category      String              // INFRASTRUCTURE, DATABASE, SECURITY_CONFIG
+  riskLevel     ChangeRiskLevel     @default(MEDIUM) @map("risk_level")
+  reason        String
+  planDetails   String              @map("plan_details")
+  rollbackPlan  String              @map("rollback_plan")
+  status        ChangeRequestStatus @default(SUBMITTED)
+  requesterId   String              @map("requester_id") @db.Uuid
+  approvedById  String?             @map("approved_by_id") @db.Uuid
+  approvedAt    DateTime?           @map("approved_at") @db.Timestamptz(6)
+  implementedAt DateTime?           @map("implemented_at") @db.Timestamptz(6)
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  requester     User                @relation("ChangeRequester", fields: [requesterId], references: [id])
+  approvedBy    User?               @relation("ChangeApprover", fields: [approvedById], references: [id])
+
+  @@index([status])
+  @@map("change_requests")
+}
+
+model UserBlock {
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  blocker   User     @relation("BlockerUsers", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("BlockedUsers", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@map("user_blocks")
 }

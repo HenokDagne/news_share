@@ -17,9 +17,13 @@ export class ApiError extends Error {
   }
 }
 
+export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
+  body?: any;
+}
+
 export async function apiRequest<T = any>(
   endpoint: string,
-  options: RequestInit = {},
+  options: ApiRequestOptions = {},
 ): Promise<T> {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
   const token = typeof window !== 'undefined' ? localStorage.getItem('news_share_admin_token') : null;
@@ -29,7 +33,11 @@ export async function apiRequest<T = any>(
     ...(options.headers as Record<string, string>),
   };
 
-  if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+  let body = options.body;
+  if (body && typeof body === 'object' && !(body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(body);
+  } else if (!(body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
@@ -40,6 +48,7 @@ export async function apiRequest<T = any>(
   const response = await fetch(url, {
     ...options,
     headers,
+    body,
   });
 
   if (response.status === 204) {

@@ -116,54 +116,21 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(_isSearchVisible ? 120 : 64),
-        child: Column(
-          children: [
-            const TopAppBar(),
-            if (_isSearchVisible)
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 40,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          autofocus: true,
-                          onChanged: _onSearchChanged,
-                          decoration: const InputDecoration(
-                            icon: Icon(Icons.search, size: 20, color: Colors.grey),
-                            hintText: 'Search news, topics, creators...',
-                            border: InputBorder.none,
-                            isDense: true,
-                          ),
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.black54),
-                      onPressed: () {
-                        setState(() {
-                          _isSearchVisible = false;
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
+      appBar: InstagramTopNavBar(
+        pageType: TopNavBarType.home,
+        searchController: _searchController,
+        onSearchChanged: _onSearchChanged,
+        onClearSearch: () => _onSearchChanged(''),
+        isSearchExpanded: _isSearchVisible,
+        onSearchToggle: () {
+          setState(() {
+            _isSearchVisible = !_isSearchVisible;
+            if (!_isSearchVisible) {
+              _searchController.clear();
+              _onSearchChanged('');
+            }
+          });
+        },
       ),
       body: Stack(
         children: [

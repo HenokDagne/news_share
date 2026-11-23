@@ -16,6 +16,10 @@ export const SENSITIVE: Permission[] = [
   'BACKUPS_MANAGE',
   'ROLES_MANAGE',
   'ACCESS_REVIEWS_MANAGE',
+  'COMPLIANCE_MANAGE',
+  'PRIVACY_MANAGE',
+  'INCIDENTS_MANAGE',
+  'CHANGES_MANAGE',
 ];
 
 export const PRESETS: Record<'MODERATOR' | 'ADMIN', Permission[]> = {
@@ -26,6 +30,7 @@ export const PRESETS: Record<'MODERATOR' | 'ADMIN', Permission[]> = {
     'REPORTS_MODERATE',
     'POSTS_REMOVE',
     'USERS_MANAGE',
+    'COMPLIANCE_VIEW',
   ],
   ADMIN: [
     'DASHBOARD_VIEW',
@@ -42,6 +47,11 @@ export const PRESETS: Record<'MODERATOR' | 'ADMIN', Permission[]> = {
     'ROLES_VIEW',
     'ROLES_MANAGE',
     'ACCESS_REVIEWS_MANAGE',
+    'COMPLIANCE_VIEW',
+    'COMPLIANCE_MANAGE',
+    'PRIVACY_MANAGE',
+    'INCIDENTS_MANAGE',
+    'CHANGES_MANAGE',
   ],
 };
 
@@ -64,6 +74,11 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   ROLES_VIEW: 'View user roles and role change requests',
   ROLES_MANAGE: 'Assign, modify, revoke roles and review requests',
   ACCESS_REVIEWS_MANAGE: 'Conduct and record quarterly periodic access reviews',
+  COMPLIANCE_VIEW: 'View compliance obligations, security policies, and reviews',
+  COMPLIANCE_MANAGE: 'Manage compliance obligations, policies, and risk registers',
+  PRIVACY_MANAGE: 'Process personal data requests and manage breach records',
+  INCIDENTS_MANAGE: 'Record, investigate, and resolve security incidents',
+  CHANGES_MANAGE: 'Submit, review, and approve security change requests',
 };
 
 export function hasPermission(

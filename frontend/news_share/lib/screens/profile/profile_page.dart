@@ -21,6 +21,7 @@ import '../notification/notification_page.dart';
 import '../moderation/post_actions_sheet.dart';
 import 'profile_edit_screen.dart';
 import 'followers_following_page.dart';
+import '../privacy/privacy_and_safety_screen.dart';
 import '../users/user_list.dart';
 import '../auth/login.dart';
 
@@ -300,7 +301,10 @@ class _ProfilePageState extends State<ProfilePage> {
               title: const Text('Settings and privacy', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
-                _editProfile();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PrivacyAndSafetyScreen()),
+                );
               },
             ),
             ListTile(

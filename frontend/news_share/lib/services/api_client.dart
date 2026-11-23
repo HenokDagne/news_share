@@ -915,4 +915,98 @@ class ApiClient {
   Future<void> markAllActivityRead() async {
     await _sendRequest('POST', '/me/activity/read-all');
   }
+
+  // ===================== GOVERNANCE, PRIVACY & SAFETY =====================
+
+  Future<List<Map<String, dynamic>>> getActivePolicies() async {
+    try {
+      final res = await _sendRequest('GET', '/policies/active', requiresAuth: false);
+      if (res is List) {
+        return List<Map<String, dynamic>>.from(res);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('getActivePolicies error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getMyPrivacyRequests() async {
+    try {
+      final res = await _sendRequest('GET', '/me/privacy/requests');
+      if (res is List) {
+        return List<Map<String, dynamic>>.from(res);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('getMyPrivacyRequests error: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> submitPrivacyRequest({
+    required String requestType,
+    required String details,
+  }) async {
+    final res = await _sendRequest('POST', '/me/privacy/requests', body: {
+      'requestType': requestType,
+      'details': details,
+    });
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<Map<String, dynamic>> exportMyData() async {
+    final res = await _sendRequest('GET', '/me/privacy/export-data');
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<Map<String, dynamic>> recordConsent({
+    required String purpose,
+    required bool granted,
+    String? policyVersion,
+  }) async {
+    final res = await _sendRequest('POST', '/me/privacy/consent', body: {
+      'purpose': purpose,
+      'granted': granted,
+      if (policyVersion != null) 'policyVersion': policyVersion,
+    });
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<List<Map<String, dynamic>>> getMyConsents() async {
+    try {
+      final res = await _sendRequest('GET', '/me/privacy/consents');
+      if (res is List) {
+        return List<Map<String, dynamic>>.from(res);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('getMyConsents error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getBlockedUsers() async {
+    try {
+      final res = await _sendRequest('GET', '/me/blocks');
+      if (res is List) {
+        return List<Map<String, dynamic>>.from(res);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('getBlockedUsers error: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> blockUser(String targetUserId, {String? reason}) async {
+    final res = await _sendRequest('POST', '/users/$targetUserId/block', body: {
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
+    });
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<void> unblockUser(String targetUserId) async {
+    await _sendRequest('DELETE', '/users/$targetUserId/block');
+  }
 }
