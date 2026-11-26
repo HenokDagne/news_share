@@ -41,6 +41,15 @@ export class ProfileResponseDto {
 
   @ApiProperty({ example: 7 })
   followingCount: number;
+
+  @ApiPropertyOptional({ example: 3 })
+  postsCount?: number;
+
+  @ApiPropertyOptional({ example: false })
+  isFollowing?: boolean;
+
+  @ApiPropertyOptional({ example: false })
+  isPrivate?: boolean;
 }
 
 export class MeResponseDto extends ProfileResponseDto {
@@ -73,6 +82,8 @@ export function toProfile(profile: {
   avatarUrl: string | null;
   followersCount: number;
   followingCount: number;
+  postsCount?: number;
+  isFollowing?: boolean;
 }): ProfileResponseDto {
   return {
     id: profile.id,
@@ -82,6 +93,8 @@ export function toProfile(profile: {
     avatarUrl: profile.avatarUrl ?? null,
     followersCount: profile.followersCount,
     followingCount: profile.followingCount,
+    postsCount: profile.postsCount,
+    isFollowing: profile.isFollowing,
   };
 }
 
@@ -94,6 +107,7 @@ export function toMe(
     avatarUrl: string | null;
     followersCount: number;
     followingCount: number;
+    postsCount?: number;
   },
 ): MeResponseDto {
   return {
@@ -106,5 +120,6 @@ export function toMe(
     avatarUrl: profile.avatarUrl ?? null,
     followersCount: profile.followersCount,
     followingCount: profile.followingCount,
+    postsCount: profile.postsCount,
   };
 }

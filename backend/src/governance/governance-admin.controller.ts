@@ -151,6 +151,34 @@ export class GovernanceAdminController {
     return this.governance.resolvePrivacyRequest(adminId, id, dto);
   }
 
+  @Get('privacy/audit-monitoring')
+  @RequirePermissions('PRIVACY_MANAGE')
+  @ApiOperation({ summary: 'Authorized privacy audit trail and consent event monitoring' })
+  getPrivacyAuditMonitoring(@Query('limit') limit?: number) {
+    return this.governance.getPrivacyAuditRecords(limit ? Number(limit) : 100);
+  }
+
+  @Get('privacy/retention/metrics')
+  @RequirePermissions('PRIVACY_MANAGE')
+  @ApiOperation({ summary: 'Get data retention metrics, active 30-day grace periods, and compliance stats' })
+  getRetentionMetrics() {
+    return this.governance.getRetentionMetrics();
+  }
+
+  @Post('privacy/retention/process-deletions')
+  @RequirePermissions('PRIVACY_MANAGE')
+  @ApiOperation({ summary: 'Trigger processing of accounts whose 30-day grace period has elapsed' })
+  processScheduledDeletions() {
+    return this.governance.processScheduledAccountDeletions();
+  }
+
+  @Get('privacy/users/:userId/consents')
+  @RequirePermissions('PRIVACY_MANAGE')
+  @ApiOperation({ summary: 'Inspect consent history for a specific user' })
+  getUserConsents(@Param('userId') userId: string) {
+    return this.governance.getUserConsents(userId);
+  }
+
   @Get('privacy/breaches')
   @RequirePermissions('PRIVACY_MANAGE')
   @ApiOperation({ summary: 'List recorded data breaches' })

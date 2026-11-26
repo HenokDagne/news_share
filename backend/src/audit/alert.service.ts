@@ -19,6 +19,7 @@ export class AlertService {
   private failedLoginsByIp = new Map<string, FailureRecord[]>();
   private failedLoginsByUser = new Map<string, FailureRecord[]>();
   private unauthorizedSpikesByIp = new Map<string, number[]>();
+  private lastAlertEmailSentAt = new Map<string, number>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -37,6 +38,7 @@ export class AlertService {
     const now = Date.now();
     const windowMs = AUDIT_CONSTANTS.BRUTE_FORCE_WINDOW_MS;
     const threshold = AUDIT_CONSTANTS.BRUTE_FORCE_THRESHOLD;
+    let triggeredForIp = false;
 
     // 1. IP-based sliding window
     if (params.ipAddress) {
@@ -45,7 +47,9 @@ export class AlertService {
       valid.push({ timestamp: now, ipAddress: params.ipAddress, username: params.username });
       this.failedLoginsByIp.set(params.ipAddress, valid);
 
-      if (valid.length >= threshold) {
+      // Trigger at threshold or on periodic intervals thereafter to prevent spamming
+      if (valid.length >= threshold && (valid.length === threshold || valid.length % threshold === 0)) {
+        triggeredForIp = true;
         await this.triggerAlert({
           alertType: ALERT_TYPES.BRUTE_FORCE_ATTACK,
           severity: AuditSeverity.HIGH,
@@ -64,14 +68,14 @@ export class AlertService {
       }
     }
 
-    // 2. Username/Email-based sliding window
-    if (params.username) {
+    // 2. Username/Email-based sliding window (only if IP-based did not already fire in this same call)
+    if (params.username && !triggeredForIp) {
       const records = this.failedLoginsByUser.get(params.username) || [];
       const valid = records.filter((r) => now - r.timestamp <= windowMs);
       valid.push({ timestamp: now, ipAddress: params.ipAddress, username: params.username });
       this.failedLoginsByUser.set(params.username, valid);
 
-      if (valid.length >= threshold) {
+      if (valid.length >= threshold && (valid.length === threshold || valid.length % threshold === 0)) {
         await this.triggerAlert({
           alertType: ALERT_TYPES.BRUTE_FORCE_ATTACK,
           severity: AuditSeverity.HIGH,
@@ -161,21 +165,33 @@ export class AlertService {
       },
     });
 
-    // Escalation routing (Section 2.5)
+    // Escalation routing (Section 2.5) with email notification throttling
     if (tier === ESCALATION_TIERS.TIER_3 || params.severity === AuditSeverity.CRITICAL) {
-      // Send urgent alert email
-      try {
-        await this.mail.sendSecurityNotice(
-          securityEmail,
-          `CRITICAL SECURITY ALERT: ${params.title}\n\nDetails: ${params.description}\nSeverity: ${params.severity}\nIP: ${params.ipAddress || 'N/A'}\nUser: ${params.username || 'N/A'}\nTime: ${new Date().toISOString()}`,
-        );
+      const throttleKey = `${params.alertType}:${params.ipAddress || '*'}:${params.username || '*'}`;
+      const now = Date.now();
+      const lastSent = this.lastAlertEmailSentAt.get(throttleKey) || 0;
+      const cooldownMs = 10 * 60 * 1000; // 10 minutes deduplication window
 
-        await this.prisma.securityAlert.update({
-          where: { id: alert.id },
-          data: { notificationSent: true },
-        });
-      } catch (err: any) {
-        this.logger.error(`Failed to send alert email: ${err.message}`);
+      if (now - lastSent < cooldownMs) {
+        this.logger.log(
+          `[AlertService] Suppressing duplicate security alert email for ${throttleKey} (sent ${Math.round((now - lastSent) / 1000)}s ago)`,
+        );
+      } else {
+        this.lastAlertEmailSentAt.set(throttleKey, now);
+        // Send urgent alert email
+        try {
+          await this.mail.sendSecurityNotice(
+            securityEmail,
+            `CRITICAL SECURITY ALERT: ${params.title}\n\nDetails: ${params.description}\nSeverity: ${params.severity}\nIP: ${params.ipAddress || 'N/A'}\nUser: ${params.username || 'N/A'}\nTime: ${new Date().toISOString()}`,
+          );
+
+          await this.prisma.securityAlert.update({
+            where: { id: alert.id },
+            data: { notificationSent: true },
+          });
+        } catch (err: any) {
+          this.logger.error(`Failed to send alert email: ${err.message}`);
+        }
       }
     }
 

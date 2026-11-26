@@ -215,6 +215,68 @@ export class CreateConsentRecordDto {
   policyVersion?: string;
 }
 
+export class UpdatePrivacyPreferencesDto {
+  @IsBoolean()
+  @IsOptional()
+  privateAccount?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  activityStatus?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  suggestAccount?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  syncContacts?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  locationServices?: boolean;
+
+  @IsString()
+  @IsOptional()
+  commentPermission?: string;
+
+  @IsString()
+  @IsOptional()
+  mentionPermission?: string;
+
+  @IsString()
+  @IsOptional()
+  dmPermission?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  analyticsPerformance?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  feedPersonalization?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  securityTelemetry?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  productNewsUpdates?: boolean;
+}
+
+export class CancelPrivacyRequestDto {
+  @IsString()
+  @IsOptional()
+  reason?: string;
+}
+
+export class AcceptPolicyDto {
+  @IsString()
+  @IsOptional()
+  versionNumber?: string;
+}
+
 export class CreateDataBreachDto {
   @IsString()
   @IsNotEmpty()

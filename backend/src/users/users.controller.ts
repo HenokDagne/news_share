@@ -138,8 +138,11 @@ export class UsersController {
   @ApiResponse({ status: 200, type: ProfileResponseDto })
   @ApiResponse({ status: 400, description: 'Invalid UUID' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  getProfile(@Param('id') id: string) {
-    return this.users.getProfileById(id);
+  getProfile(
+    @Param('id') id: string,
+    @CurrentUser('id') currentUserId?: string,
+  ) {
+    return this.users.getProfileById(id, currentUserId);
   }
 
   @Patch('admin/users/:id/role')

@@ -38,34 +38,62 @@ export class FollowsService {
       throw new NotFoundException('User not found');
     }
 
-    const created = await this.prisma.$transaction(async (tx) => {
+    // Check if either user has blocked the other
+    const block = await this.prisma.userBlock.findFirst({
+      where: {
+        OR: [
+          { blockerId: me, blockedId: targetId },
+          { blockerId: targetId, blockedId: me },
+        ],
+      },
+    });
+    if (block) {
+      throw new BadRequestException('Cannot follow this user due to account block');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
       const res = await tx.follow.createMany({
         data: [{ followerId: me, followingId: targetId }],
         skipDuplicates: true,
       });
 
-      if (res.count === 1) {
-        await tx.profile.update({
-          where: { id: me },
-          data: { followingCount: { increment: 1 } },
-        });
-        await tx.profile.update({
-          where: { id: targetId },
-          data: { followersCount: { increment: 1 } },
-        });
-      }
+      // Synchronize exact counts directly from database
+      const [targetFollowers, myFollowing] = await Promise.all([
+        tx.follow.count({ where: { followingId: targetId } }),
+        tx.follow.count({ where: { followerId: me } }),
+      ]);
 
-      return res.count === 1;
+      await tx.profile.update({
+        where: { id: targetId },
+        data: { followersCount: targetFollowers },
+      });
+      await tx.profile.update({
+        where: { id: me },
+        data: { followingCount: myFollowing },
+      });
+
+      return {
+        created: res.count === 1,
+        targetFollowers,
+        myFollowing,
+      };
     });
 
-    if (created) {
+    if (result.created) {
       this.events.emit(
         EVENTS.USER_FOLLOWED,
         new UserFollowedEvent(me, targetId),
       );
     }
 
-    return { following: true };
+    return {
+      following: true,
+      isFollowing: true,
+      targetUserId: targetId,
+      targetFollowersCount: result.targetFollowers,
+      currentUserId: me,
+      currentUserFollowingCount: result.myFollowing,
+    };
   }
 
   async unfollow(me: string, targetId: string) {
@@ -74,37 +102,43 @@ export class FollowsService {
       throw new BadRequestException('Cannot unfollow yourself');
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.follow.findUnique({
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.follow.deleteMany({
         where: {
-          followerId_followingId: {
-            followerId: me,
-            followingId: targetId,
-          },
+          followerId: me,
+          followingId: targetId,
         },
       });
 
-      if (existing) {
-        await tx.follow.delete({
-          where: {
-            followerId_followingId: {
-              followerId: me,
-              followingId: targetId,
-            },
-          },
-        });
-        await tx.profile.update({
-          where: { id: me },
-          data: { followingCount: { decrement: 1 } },
-        });
-        await tx.profile.update({
-          where: { id: targetId },
-          data: { followersCount: { decrement: 1 } },
-        });
-      }
+      // Synchronize exact counts directly from database
+      const [targetFollowers, myFollowing] = await Promise.all([
+        tx.follow.count({ where: { followingId: targetId } }),
+        tx.follow.count({ where: { followerId: me } }),
+      ]);
+
+      await tx.profile.update({
+        where: { id: targetId },
+        data: { followersCount: targetFollowers },
+      });
+      await tx.profile.update({
+        where: { id: me },
+        data: { followingCount: myFollowing },
+      });
+
+      return {
+        targetFollowers,
+        myFollowing,
+      };
     });
 
-    return { following: false };
+    return {
+      following: false,
+      isFollowing: false,
+      targetUserId: targetId,
+      targetFollowersCount: result.targetFollowers,
+      currentUserId: me,
+      currentUserFollowingCount: result.myFollowing,
+    };
   }
 
   async getFollowStatus(me: string, targetId: string) {

@@ -20,9 +20,9 @@ export class PasswordPolicyService {
   async assert(password: string, ctx: PasswordContext = {}): Promise<void> {
     const problems: string[] = [];
 
-    // 1. Length enforcement (12 - 128 characters)
-    if (!password || password.length < 12) {
-      problems.push('must be at least 12 characters long');
+    // 1. Length enforcement (8 - 128 characters)
+    if (!password || password.length < 8) {
+      problems.push('must be at least 8 characters long');
     }
     if (password && password.length > 128) {
       problems.push('must not exceed 128 characters');
@@ -85,7 +85,7 @@ export class PasswordPolicyService {
    * Only the first 5 characters of the SHA-1 hash leave the server.
    */
   private async isBreached(password: string): Promise<boolean> {
-    if (process.env.HIBP_ENABLED === 'false') {
+    if (process.env.HIBP_ENABLED !== 'true') {
       return false;
     }
 

@@ -37,13 +37,18 @@ describe('Follows e2e', () => {
 
     prisma = app.get(PrismaService);
 
-    // Clean test database
-    await prisma.notification.deleteMany();
-    await prisma.follow.deleteMany();
-    await prisma.post.deleteMany();
-    await prisma.refreshToken.deleteMany();
-    await prisma.profile.deleteMany();
-    await prisma.user.deleteMany();
+    // Clean only test users to protect development data
+    await prisma.follow.deleteMany({
+      where: {
+        OR: [
+          { follower: { user: { email: { contains: 'e2e' } } } },
+          { following: { user: { email: { contains: 'e2e' } } } },
+        ],
+      },
+    });
+    await prisma.user.deleteMany({
+      where: { email: { contains: 'e2e' } },
+    });
 
     // Register Alice
     const resA = await request(app.getHttpServer())
@@ -85,14 +90,14 @@ describe('Follows e2e', () => {
       .post(`/api/v1/users/${bobId}/follow`)
       .set('Authorization', `Bearer ${aliceToken}`)
       .expect(200);
-    expect(res1.body).toEqual({ following: true });
+    expect(res1.body).toMatchObject({ following: true });
 
     // Repeat follow
     const res2 = await request(app.getHttpServer())
       .post(`/api/v1/users/${bobId}/follow`)
       .set('Authorization', `Bearer ${aliceToken}`)
       .expect(200);
-    expect(res2.body).toEqual({ following: true });
+    expect(res2.body).toMatchObject({ following: true });
 
     // Check counters: Alice following=1, Bob followers=1
     const aliceProfile = await request(app.getHttpServer())
@@ -123,14 +128,14 @@ describe('Follows e2e', () => {
       .delete(`/api/v1/users/${bobId}/follow`)
       .set('Authorization', `Bearer ${aliceToken}`)
       .expect(200);
-    expect(res1.body).toEqual({ following: false });
+    expect(res1.body).toMatchObject({ following: false });
 
     // Repeat unfollow
     const res2 = await request(app.getHttpServer())
       .delete(`/api/v1/users/${bobId}/follow`)
       .set('Authorization', `Bearer ${aliceToken}`)
       .expect(200);
-    expect(res2.body).toEqual({ following: false });
+    expect(res2.body).toMatchObject({ following: false });
 
     // Check counters: Alice following=0, Bob followers=0
     const aliceProfile = await request(app.getHttpServer())

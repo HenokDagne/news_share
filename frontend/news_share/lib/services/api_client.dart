@@ -16,6 +16,7 @@ class CurrentUserModel {
   final String? bio;
   final int followersCount;
   final int followingCount;
+  final int postsCount;
 
   CurrentUserModel({
     required this.id,
@@ -27,6 +28,7 @@ class CurrentUserModel {
     this.bio,
     this.followersCount = 0,
     this.followingCount = 0,
+    this.postsCount = 0,
   });
 
   factory CurrentUserModel.fromJson(Map<String, dynamic> json) {
@@ -40,6 +42,7 @@ class CurrentUserModel {
       bio: json['bio']?.toString(),
       followersCount: (json['followersCount'] ?? json['followers_count'] ?? 0) as int,
       followingCount: (json['followingCount'] ?? json['following_count'] ?? 0) as int,
+      postsCount: (json['postsCount'] ?? json['posts_count'] ?? 0) as int,
     );
   }
 
@@ -53,6 +56,7 @@ class CurrentUserModel {
     'bio': bio,
     'followersCount': followersCount,
     'followingCount': followingCount,
+    'postsCount': postsCount,
   };
 }
 
@@ -95,6 +99,7 @@ class ApiClient {
 
   bool get isAuthenticated => _accessToken != null && _currentUser != null;
   String? get currentUserId => _currentUser?.id;
+  String? get currentUsername => _currentUser?.username;
   String? get currentUserEmail => _currentUser?.email;
   CurrentUserModel? get currentUser => _currentUser;
   String? get accessToken => _accessToken;
@@ -150,7 +155,7 @@ class ApiClient {
     if (contentType != null) {
       headers['Content-Type'] = contentType;
     }
-    if (requiresAuth && _accessToken != null) {
+    if (_accessToken != null && _accessToken!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $_accessToken';
     }
     return headers;
@@ -544,6 +549,10 @@ class ApiClient {
     return [];
   }
 
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    return getUsers(search: query);
+  }
+
   Future<Map<String, dynamic>> getUserProfile(String userId) async {
     final res = await _sendRequest('GET', '/users/$userId');
     return Map<String, dynamic>.from(res);
@@ -694,14 +703,48 @@ class ApiClient {
 
   // ===================== FOLLOWS =====================
 
-  Future<bool> follow(String targetUserId) async {
+  Future<Map<String, dynamic>> follow(String targetUserId) async {
     final res = await _sendRequest('POST', '/users/$targetUserId/follow');
-    return res != null && res['following'] == true;
+    final map = Map<String, dynamic>.from(res ?? {});
+    if (_currentUser != null && map['currentUserFollowingCount'] != null) {
+      _currentUser = CurrentUserModel(
+        id: _currentUser!.id,
+        email: _currentUser!.email,
+        username: _currentUser!.username,
+        role: _currentUser!.role,
+        fullName: _currentUser!.fullName,
+        avatarUrl: _currentUser!.avatarUrl,
+        bio: _currentUser!.bio,
+        followersCount: _currentUser!.followersCount,
+        followingCount: (map['currentUserFollowingCount'] as num).toInt(),
+        postsCount: _currentUser!.postsCount,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('news_share_current_user', jsonEncode(_currentUser!.toJson()));
+    }
+    return map;
   }
 
-  Future<bool> unfollow(String targetUserId) async {
+  Future<Map<String, dynamic>> unfollow(String targetUserId) async {
     final res = await _sendRequest('DELETE', '/users/$targetUserId/follow');
-    return res != null && res['following'] == false;
+    final map = Map<String, dynamic>.from(res ?? {});
+    if (_currentUser != null && map['currentUserFollowingCount'] != null) {
+      _currentUser = CurrentUserModel(
+        id: _currentUser!.id,
+        email: _currentUser!.email,
+        username: _currentUser!.username,
+        role: _currentUser!.role,
+        fullName: _currentUser!.fullName,
+        avatarUrl: _currentUser!.avatarUrl,
+        bio: _currentUser!.bio,
+        followersCount: _currentUser!.followersCount,
+        followingCount: (map['currentUserFollowingCount'] as num).toInt(),
+        postsCount: _currentUser!.postsCount,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('news_share_current_user', jsonEncode(_currentUser!.toJson()));
+    }
+    return map;
   }
 
   Future<Map<String, bool>> getFollowStatus(String targetUserId) async {
@@ -955,6 +998,11 @@ class ApiClient {
     return res is Map<String, dynamic> ? res : {};
   }
 
+  Future<Map<String, dynamic>> createPrivacyRequest({
+    required String requestType,
+    required String details,
+  }) => submitPrivacyRequest(requestType: requestType, details: details);
+
   Future<Map<String, dynamic>> exportMyData() async {
     final res = await _sendRequest('GET', '/me/privacy/export-data');
     return res is Map<String, dynamic> ? res : {};
@@ -986,6 +1034,69 @@ class ApiClient {
     }
   }
 
+  Future<Map<String, dynamic>> getPrivacyPreferences() async {
+    try {
+      final res = await _sendRequest('GET', '/me/privacy/preferences');
+      return res is Map<String, dynamic> ? res : {};
+    } catch (e) {
+      debugPrint('getPrivacyPreferences error: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> updatePrivacyPreferences({
+    bool? privateAccount,
+    bool? activityStatus,
+    bool? suggestAccount,
+    bool? syncContacts,
+    bool? locationServices,
+    String? commentPermission,
+    String? mentionPermission,
+    String? dmPermission,
+    bool? analyticsPerformance,
+    bool? feedPersonalization,
+    bool? securityTelemetry,
+    bool? productNewsUpdates,
+  }) async {
+    final body = <String, dynamic>{
+      if (privateAccount != null) 'privateAccount': privateAccount,
+      if (activityStatus != null) 'activityStatus': activityStatus,
+      if (suggestAccount != null) 'suggestAccount': suggestAccount,
+      if (syncContacts != null) 'syncContacts': syncContacts,
+      if (locationServices != null) 'locationServices': locationServices,
+      if (commentPermission != null) 'commentPermission': commentPermission,
+      if (mentionPermission != null) 'mentionPermission': mentionPermission,
+      if (dmPermission != null) 'dmPermission': dmPermission,
+      if (analyticsPerformance != null) 'analyticsPerformance': analyticsPerformance,
+      if (feedPersonalization != null) 'feedPersonalization': feedPersonalization,
+      if (securityTelemetry != null) 'securityTelemetry': securityTelemetry,
+      if (productNewsUpdates != null) 'productNewsUpdates': productNewsUpdates,
+    };
+    final res = await _sendRequest('PUT', '/me/privacy/preferences', body: body);
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<Map<String, dynamic>> cancelAccountDeletion({String? reason}) async {
+    final res = await _sendRequest('POST', '/me/privacy/deletion/cancel', body: {
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
+    });
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<Map<String, dynamic>> cancelPrivacyRequest(String requestId, {String? reason}) async {
+    final res = await _sendRequest('DELETE', '/me/privacy/requests/$requestId', body: {
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
+    });
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<Map<String, dynamic>> acceptPolicy(String policyId, {String? versionNumber}) async {
+    final res = await _sendRequest('POST', '/policies/$policyId/accept', body: {
+      if (versionNumber != null) 'versionNumber': versionNumber,
+    });
+    return res is Map<String, dynamic> ? res : {};
+  }
+
   Future<List<Map<String, dynamic>>> getBlockedUsers() async {
     try {
       final res = await _sendRequest('GET', '/me/blocks');
@@ -1008,5 +1119,28 @@ class ApiClient {
 
   Future<void> unblockUser(String targetUserId) async {
     await _sendRequest('DELETE', '/users/$targetUserId/block');
+  }
+
+  Future<Map<String, dynamic>> getSecurityCheckup() async {
+    try {
+      final res = await _sendRequest('GET', '/me/security/checkup');
+      return res is Map<String, dynamic> ? res : {};
+    } catch (e) {
+      debugPrint('getSecurityCheckup error: $e');
+      return {};
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> matchContacts(List<String> hashes) async {
+    try {
+      final res = await _sendRequest('POST', '/me/privacy/contacts/match', body: {'hashes': hashes});
+      if (res is List) {
+        return List<Map<String, dynamic>>.from(res);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('matchContacts error: $e');
+      return [];
+    }
   }
 }

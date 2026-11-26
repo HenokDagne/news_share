@@ -196,21 +196,46 @@ export class AuthService implements OnModuleInit {
   // ===================== LOGIN & ACCOUNT LOCKOUT =====================
 
   async login(dto: LoginDto, ctx: RequestContext = {}) {
-    const email = dto.email.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({
-      where: { email },
+    const rawIdentifier = dto.email.trim();
+    const isEmail = rawIdentifier.includes('@');
+    let user = await this.prisma.user.findFirst({
+      where: isEmail
+        ? { email: rawIdentifier.toLowerCase() }
+        : {
+            OR: [
+              { email: rawIdentifier.toLowerCase() },
+              { profile: { username: { equals: rawIdentifier, mode: 'insensitive' } } },
+            ],
+          },
       include: { profile: true },
     });
 
     // Equalize timing if user doesn't exist
-    if (!user || !user.profile) {
+    if (!user) {
       await verifyPassword(dto.password, this.dummyHash);
       void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_LOGIN_FAILURE, {
-        username: email,
+        username: rawIdentifier,
         ipAddress: ctx.ip,
         payload: { reason: 'USER_NOT_FOUND' },
       });
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    // Auto-heal missing profile if needed
+    if (!user.profile) {
+      const baseUsername = user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+      let username = baseUsername;
+      let counter = 1;
+      while (await this.prisma.profile.findUnique({ where: { username } })) {
+        username = `${baseUsername}_${counter++}`;
+      }
+      user.profile = await this.prisma.profile.create({
+        data: {
+          id: user.id,
+          username,
+          fullName: user.email.split('@')[0],
+        },
+      });
     }
 
     const now = new Date();
@@ -508,16 +533,27 @@ export class AuthService implements OnModuleInit {
   async forgotPassword(dto: ForgotPasswordDto, ctx: RequestContext = {}) {
     await this.captcha.verify(dto.captchaToken, 'forgot_password', ctx.ip);
 
-    const email = dto.email.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const rawIdentifier = dto.email.trim();
+    const isEmail = rawIdentifier.includes('@');
+    const user = await this.prisma.user.findFirst({
+      where: isEmail
+        ? { email: rawIdentifier.toLowerCase() }
+        : {
+            OR: [
+              { email: rawIdentifier.toLowerCase() },
+              { profile: { username: { equals: rawIdentifier, mode: 'insensitive' } } },
+            ],
+          },
+      include: { profile: true },
+    });
 
     if (user) {
-      const resetToken = await this.tokens.issue(user.id, TokenType.PASSWORD_RESET, 30);
+      const resetToken = await this.tokens.issue(user.id, TokenType.PASSWORD_RESET, 60);
       void this.mail.sendPasswordReset(user.email, resetToken);
     }
 
     void this.audit.logAuthentication(AUDIT_ACTIONS.AUTH_PASSWORD_RESET_REQUEST, {
-      username: email,
+      username: rawIdentifier,
       ipAddress: ctx.ip,
       payload: { userFound: !!user },
     });
@@ -530,10 +566,13 @@ export class AuthService implements OnModuleInit {
 
   async resetPassword(dto: ResetPasswordDto) {
     const userId = await this.tokens.consume(dto.token, TokenType.PASSWORD_RESET);
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: { profile: true },
+    });
 
     // Enforce password policy
-    await this.policy.assert(dto.newPassword, { email: user.email });
+    await this.policy.assert(dto.newPassword, { email: user.email, username: user.profile?.username });
 
     const newHash = await hashPassword(dto.newPassword);
 
@@ -547,6 +586,23 @@ export class AuthService implements OnModuleInit {
         lockedUntil: null, // Unlocks account immediately upon successful reset
       },
     });
+
+    // Auto-heal missing profile if needed
+    if (!user.profile) {
+      const baseUsername = user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+      let username = baseUsername;
+      let counter = 1;
+      while (await this.prisma.profile.findUnique({ where: { username } })) {
+        username = `${baseUsername}_${counter++}`;
+      }
+      await this.prisma.profile.create({
+        data: {
+          id: user.id,
+          username,
+          fullName: user.email.split('@')[0],
+        },
+      });
+    }
 
     // Invalidate all active sessions upon password reset (prevents session hijacking)
     await this.sessions.revokeAllForUser(userId, 'PASSWORD_RESET');

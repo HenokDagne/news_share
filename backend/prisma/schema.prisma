@@ -125,6 +125,7 @@ model User {
   statusUpdatedAt   DateTime?         @map("status_updated_at") @db.Timestamptz(6)
   deletedAt         DateTime?         @map("deleted_at") @db.Timestamptz(6)
   deletedById       String?           @map("deleted_by_id") @db.Uuid
+  scheduledDeletionAt DateTime?         @map("scheduled_deletion_at") @db.Timestamptz(6)
   mustChangePassword Boolean          @default(false) @map("must_change_password")
   lastActiveAt      DateTime?         @map("last_active_at") @db.Timestamptz(6)
   createdById       String?           @map("created_by_id") @db.Uuid
@@ -172,6 +173,8 @@ model User {
   changeRequestsApproved ChangeRequest[] @relation("ChangeApprover")
   blockedUsers UserBlock[] @relation("BlockerUsers")
   blockedByUsers UserBlock[] @relation("BlockedUsers")
+  privacyPreference UserPrivacyPreference?
+  policyAcceptances PolicyAcceptance[]
 
   @@index([status])
   @@index([role])
@@ -818,6 +821,7 @@ enum PrivacyRequestStatus {
   UNDER_REVIEW
   COMPLETED
   REJECTED
+  CANCELLED
 }
 
 enum RiskLikelihood {
@@ -917,6 +921,7 @@ model SecurityPolicy {
 
   author         User            @relation("PolicyAuthor", fields: [authorId], references: [id])
   versions       PolicyVersion[]
+  acceptances    PolicyAcceptance[]
 
   @@index([status])
   @@map("security_policies")
@@ -939,24 +944,65 @@ model PolicyVersion {
 }
 
 model PrivacyRequest {
-  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String               @map("user_id") @db.Uuid
-  requestType     PrivacyRequestType   @map("request_type")
-  status          PrivacyRequestStatus @default(PENDING)
-  details         String?
-  rejectionReason String?              @map("rejection_reason")
-  exportFileUrl   String?              @map("export_file_url")
-  resolvedById    String?              @map("resolved_by_id") @db.Uuid
-  resolvedAt      DateTime?            @map("resolved_at") @db.Timestamptz(6)
-  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String               @map("user_id") @db.Uuid
+  requestType         PrivacyRequestType   @map("request_type")
+  status              PrivacyRequestStatus @default(PENDING)
+  details             String?
+  rejectionReason     String?              @map("rejection_reason")
+  exportFileUrl       String?              @map("export_file_url")
+  scheduledDeletionAt DateTime?            @map("scheduled_deletion_at") @db.Timestamptz(6)
+  cancelledAt         DateTime?            @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason        String?              @map("cancel_reason")
+  resolvedById        String?              @map("resolved_by_id") @db.Uuid
+  resolvedAt          DateTime?            @map("resolved_at") @db.Timestamptz(6)
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user            User                 @relation("UserPrivacyRequests", fields: [userId], references: [id], onDelete: Cascade)
-  resolvedBy      User?                @relation("PrivacyRequestResolver", fields: [resolvedById], references: [id])
+  user                User                 @relation("UserPrivacyRequests", fields: [userId], references: [id], onDelete: Cascade)
+  resolvedBy          User?                @relation("PrivacyRequestResolver", fields: [resolvedById], references: [id])
 
   @@index([userId])
   @@index([status])
   @@map("privacy_requests")
+}
+
+model UserPrivacyPreference {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String    @unique @map("user_id") @db.Uuid
+  privateAccount        Boolean   @default(false) @map("private_account")
+  activityStatus        Boolean   @default(true) @map("activity_status")
+  suggestAccount        Boolean   @default(true) @map("suggest_account")
+  syncContacts          Boolean   @default(false) @map("sync_contacts")
+  locationServices      Boolean   @default(false) @map("location_services")
+  commentPermission     String    @default("EVERYONE") @map("comment_permission")
+  mentionPermission     String    @default("EVERYONE") @map("mention_permission")
+  dmPermission          String    @default("FRIENDS") @map("dm_permission")
+  analyticsPerformance  Boolean   @default(true) @map("analytics_performance")
+  feedPersonalization   Boolean   @default(true) @map("feed_personalization")
+  securityTelemetry     Boolean   @default(true) @map("security_telemetry")
+  productNewsUpdates    Boolean   @default(false) @map("product_news_updates")
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_privacy_preferences")
+}
+
+model PolicyAcceptance {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  policyId      String         @map("policy_id") @db.Uuid
+  versionNumber String         @map("version_number")
+  acceptedAt    DateTime       @default(now()) @map("accepted_at") @db.Timestamptz(6)
+  ipAddress     String?        @map("ip_address")
+  userAgent     String?        @map("user_agent")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy        SecurityPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, policyId, versionNumber])
+  @@map("policy_acceptances")
 }
 
 model ConsentRecord {

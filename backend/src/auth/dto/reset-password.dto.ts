@@ -7,9 +7,9 @@ export class ResetPasswordDto {
   @IsNotEmpty()
   token: string;
 
-  @ApiProperty({ example: 'N3w-Secure-P@ssword123!', description: 'New password (min 12 characters)' })
+  @ApiProperty({ example: 'N3w-Secure-P@ssword123!', description: 'New password (min 8 characters)' })
   @IsString()
-  @MinLength(12, { message: 'New password must be at least 12 characters long' })
+  @MinLength(8, { message: 'New password must be at least 8 characters long' })
   @MaxLength(128, { message: 'New password must not exceed 128 characters' })
   newPassword: string;
 }

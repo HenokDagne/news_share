@@ -16,15 +16,21 @@ import {
   Plus,
   Calendar,
   Lock,
+  History,
+  Trash2,
+  RefreshCw,
+  Eye,
 } from 'lucide-react';
 
 interface PrivacyRequest {
   id: string;
   userId: string;
   requestType: 'DATA_ACCESS_EXPORT' | 'DATA_CORRECTION' | 'ACCOUNT_DELETION' | 'RESTRICT_PROCESSING';
-  status: 'PENDING' | 'UNDER_REVIEW' | 'COMPLETED' | 'REJECTED';
+  status: 'PENDING' | 'UNDER_REVIEW' | 'COMPLETED' | 'REJECTED' | 'CANCELLED';
   details: string | null;
   rejectionReason: string | null;
+  cancelReason: string | null;
+  scheduledDeletionAt: string | null;
   exportFileUrl: string | null;
   createdAt: string;
   user: {
@@ -50,8 +56,34 @@ interface DataBreachRecord {
   createdAt: string;
 }
 
+interface UserInGrace {
+  id: string;
+  email: string;
+  username: string;
+  scheduledDeletionAt: string;
+  daysRemaining: number;
+}
+
+interface RetentionMetrics {
+  retentionSchedules: number;
+  pendingGracePeriodDeletions: number;
+  readyForPurge: number;
+  usersInGracePeriod: UserInGrace[];
+}
+
+interface PrivacyAuditLog {
+  id: string;
+  action: string;
+  actorType: string;
+  actorId: string;
+  userEmail?: string;
+  targetId: string;
+  details: any;
+  timestamp: string;
+}
+
 export default function PrivacyAndDataProtectionPage() {
-  const [activeTab, setActiveTab] = useState<'REQUESTS' | 'BREACHES' | 'RETENTION'>('REQUESTS');
+  const [activeTab, setActiveTab] = useState<'REQUESTS' | 'BREACHES' | 'RETENTION' | 'AUDIT'>('REQUESTS');
 
   // Requests state
   const [requests, setRequests] = useState<PrivacyRequest[]>([]);
@@ -61,6 +93,15 @@ export default function PrivacyAndDataProtectionPage() {
   // Breaches state
   const [breaches, setBreaches] = useState<DataBreachRecord[]>([]);
   const [isLoadingBreaches, setIsLoadingBreaches] = useState(true);
+
+  // Retention state
+  const [retentionMetrics, setRetentionMetrics] = useState<RetentionMetrics | null>(null);
+  const [isLoadingRetention, setIsLoadingRetention] = useState(false);
+  const [isProcessingPurge, setIsProcessingPurge] = useState(false);
+
+  // Audit state
+  const [auditLogs, setAuditLogs] = useState<PrivacyAuditLog[]>([]);
+  const [isLoadingAudit, setIsLoadingAudit] = useState(false);
 
   // Modals
   const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
@@ -104,10 +145,42 @@ export default function PrivacyAndDataProtectionPage() {
     }
   }, []);
 
+  const fetchRetentionMetrics = useCallback(async () => {
+    setIsLoadingRetention(true);
+    try {
+      const data = await apiRequest<RetentionMetrics>('/admin/governance/privacy/retention/metrics');
+      setRetentionMetrics(data);
+    } catch (err) {
+      console.error('Failed to load retention metrics:', err);
+    } finally {
+      setIsLoadingRetention(false);
+    }
+  }, []);
+
+  const fetchAuditLogs = useCallback(async () => {
+    setIsLoadingAudit(true);
+    try {
+      const data = await apiRequest<PrivacyAuditLog[]>('/admin/governance/privacy/audit-monitoring');
+      setAuditLogs(data);
+    } catch (err) {
+      console.error('Failed to load privacy audit logs:', err);
+    } finally {
+      setIsLoadingAudit(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRequests();
     fetchBreaches();
   }, [fetchRequests, fetchBreaches]);
+
+  useEffect(() => {
+    if (activeTab === 'RETENTION') {
+      fetchRetentionMetrics();
+    } else if (activeTab === 'AUDIT') {
+      fetchAuditLogs();
+    }
+  }, [activeTab, fetchRetentionMetrics, fetchAuditLogs]);
 
   const handleOpenResolve = (r: PrivacyRequest) => {
     setSelectedRequest(r);
@@ -134,6 +207,26 @@ export default function PrivacyAndDataProtectionPage() {
       alert('Failed to resolve request: ' + String(err));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleProcessDeletions = async () => {
+    const confirmed = confirm(
+      'Are you sure you want to run the scheduled account deletion purge? Any accounts past their 30-day grace period will be permanently erased.'
+    );
+    if (!confirmed) return;
+
+    setIsProcessingPurge(true);
+    try {
+      const result = await apiRequest<any>('/admin/governance/privacy/retention/process-deletions', {
+        method: 'POST',
+      });
+      alert(`Purge completed: ${result.deletedCount || 0} expired accounts permanently anonymized.`);
+      fetchRetentionMetrics();
+    } catch (err) {
+      alert('Failed to process scheduled deletions: ' + String(err));
+    } finally {
+      setIsProcessingPurge(false);
     }
   };
 
@@ -177,7 +270,7 @@ export default function PrivacyAndDataProtectionPage() {
   return (
     <AdminShell
       title="Privacy & Data Protection"
-      subtitle="Data subject rights (Proclamation 1321/2024), breach records, and retention schedules"
+      subtitle="Data subject rights (Proclamation 1321/2024), breach records, retention schedules, and consent audit"
       actions={
         activeTab === 'BREACHES' ? (
           <button
@@ -187,15 +280,24 @@ export default function PrivacyAndDataProtectionPage() {
             <Plus className="h-4 w-4" />
             Log Data Breach
           </button>
+        ) : activeTab === 'RETENTION' ? (
+          <button
+            onClick={handleProcessDeletions}
+            disabled={isProcessingPurge}
+            className="flex items-center gap-2 rounded-xl bg-[#232733] border border-[#FE2C55]/40 px-4 py-2 text-xs font-bold text-[#FE2C55] hover:bg-[#FE2C55]/10 disabled:opacity-50 transition-all"
+          >
+            <Trash2 className="h-4 w-4" />
+            {isProcessingPurge ? 'Processing...' : 'Run Scheduled Purge'}
+          </button>
         ) : null
       }
     >
       <div className="space-y-6">
         {/* Navigation Tabs */}
-        <div className="flex border-b border-[#232733] gap-6 text-xs font-bold">
+        <div className="flex border-b border-[#232733] gap-6 text-xs font-bold overflow-x-auto">
           <button
             onClick={() => setActiveTab('REQUESTS')}
-            className={`pb-3 border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'REQUESTS'
                 ? 'border-[#00F2FE] text-[#00F2FE]'
                 : 'border-transparent text-gray-400 hover:text-white'
@@ -206,7 +308,7 @@ export default function PrivacyAndDataProtectionPage() {
           </button>
           <button
             onClick={() => setActiveTab('BREACHES')}
-            className={`pb-3 border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'BREACHES'
                 ? 'border-rose-500 text-rose-400'
                 : 'border-transparent text-gray-400 hover:text-white'
@@ -217,26 +319,37 @@ export default function PrivacyAndDataProtectionPage() {
           </button>
           <button
             onClick={() => setActiveTab('RETENTION')}
-            className={`pb-3 border-b-2 transition-all flex items-center gap-2 ${
+            className={`pb-3 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'RETENTION'
                 ? 'border-amber-400 text-amber-400'
                 : 'border-transparent text-gray-400 hover:text-white'
             }`}
           >
             <Database className="h-4 w-4" />
-            Retention & Disposal Schedule
+            Retention & Grace Periods
+          </button>
+          <button
+            onClick={() => setActiveTab('AUDIT')}
+            className={`pb-3 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'AUDIT'
+                ? 'border-emerald-400 text-emerald-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <History className="h-4 w-4" />
+            Privacy & Consent Audit
           </button>
         </div>
 
         {/* TAB 1: DATA SUBJECT REQUESTS */}
         {activeTab === 'REQUESTS' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-xs text-gray-400">
                 Filter by processing status:
               </span>
-              <div className="flex gap-2">
-                {['ALL', 'PENDING', 'COMPLETED', 'REJECTED'].map((st) => (
+              <div className="flex gap-2 flex-wrap">
+                {['ALL', 'PENDING', 'COMPLETED', 'REJECTED', 'CANCELLED'].map((st) => (
                   <button
                     key={st}
                     onClick={() => setRequestFilter(st)}
@@ -298,6 +411,8 @@ export default function PrivacyAndDataProtectionPage() {
                                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                                 : req.status === 'PENDING'
                                 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                : req.status === 'CANCELLED'
+                                ? 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
                                 : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                             }`}
                           >
@@ -307,8 +422,18 @@ export default function PrivacyAndDataProtectionPage() {
                         <td className="px-5 py-4 font-mono text-[11px] text-gray-400">
                           {new Date(req.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-5 py-4 text-gray-400 text-[11px] max-w-xs truncate">
-                          {req.details || req.rejectionReason || 'Standard subject request'}
+                        <td className="px-5 py-4 text-gray-400 text-[11px] max-w-xs">
+                          <div className="truncate">{req.details || 'Standard subject request'}</div>
+                          {req.cancelReason && (
+                            <div className="text-gray-500 text-[10px] mt-0.5 italic">
+                              Cancellation: {req.cancelReason}
+                            </div>
+                          )}
+                          {req.rejectionReason && (
+                            <div className="text-rose-400 text-[10px] mt-0.5">
+                              Rejected: {req.rejectionReason}
+                            </div>
+                          )}
                         </td>
                         <td className="px-5 py-4 text-right">
                           {req.status === 'PENDING' ? (
@@ -324,7 +449,9 @@ export default function PrivacyAndDataProtectionPage() {
                               Export Dispatched
                             </span>
                           ) : (
-                            <span className="text-gray-500 text-[11px]">Processed</span>
+                            <span className="text-gray-500 text-[11px]">
+                              {req.status === 'CANCELLED' ? 'Withdrawn' : 'Processed'}
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -421,9 +548,116 @@ export default function PrivacyAndDataProtectionPage() {
           </div>
         )}
 
-        {/* TAB 3: DATA RETENTION SCHEDULE */}
+        {/* TAB 3: DATA RETENTION & GRACE PERIODS */}
         {activeTab === 'RETENTION' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Live Metrics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-2xl border border-[#232733] bg-[#12141A] p-5">
+                <div className="text-xs text-gray-400 font-semibold uppercase">Retention Schedules</div>
+                <div className="mt-2 text-2xl font-bold font-mono text-[#00F2FE]">
+                  {retentionMetrics?.retentionSchedules ?? 4} Policies
+                </div>
+                <div className="mt-1 text-[11px] text-gray-500">NIST SP 800-88, 30d Grace, WORM Backups</div>
+              </div>
+
+              <div className="rounded-2xl border border-[#232733] bg-[#12141A] p-5">
+                <div className="text-xs text-gray-400 font-semibold uppercase">30-Day Deletion Grace Queue</div>
+                <div className="mt-2 text-2xl font-bold font-mono text-amber-400">
+                  {retentionMetrics?.pendingGracePeriodDeletions ?? 0} Accounts
+                </div>
+                <div className="mt-1 text-[11px] text-gray-500">Soft-deleted, cancellable before purge</div>
+              </div>
+
+              <div className="rounded-2xl border border-[#232733] bg-[#12141A] p-5">
+                <div className="text-xs text-gray-400 font-semibold uppercase">Past Grace & Ready For Purge</div>
+                <div className="mt-2 text-2xl font-bold font-mono text-[#FE2C55]">
+                  {retentionMetrics?.readyForPurge ?? 0} Accounts
+                </div>
+                <div className="mt-1 text-[11px] text-gray-500">Eligible for permanent cryptographic erasure</div>
+              </div>
+            </div>
+
+            {/* Grace Period Accounts Table */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-400" />
+                  Accounts in 30-Day Deletion Grace Period
+                </h3>
+                <button
+                  onClick={fetchRetentionMetrics}
+                  className="text-xs text-[#00F2FE] hover:underline flex items-center gap-1"
+                >
+                  <RefreshCw className="h-3 w-3" /> Refresh
+                </button>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-[#232733] bg-[#12141A]">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-[#232733] bg-[#181B22]/60 text-gray-400 uppercase tracking-wider font-semibold">
+                    <tr>
+                      <th className="px-5 py-3.5">User</th>
+                      <th className="px-5 py-3.5">Email</th>
+                      <th className="px-5 py-3.5">Scheduled Deletion</th>
+                      <th className="px-5 py-3.5">Grace Remaining</th>
+                      <th className="px-5 py-3.5 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#232733]">
+                    {isLoadingRetention ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-gray-500">
+                          Loading retention queue...
+                        </td>
+                      </tr>
+                    ) : !retentionMetrics?.usersInGracePeriod?.length ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-gray-500">
+                          No user accounts currently in the 30-day deletion grace period.
+                        </td>
+                      </tr>
+                    ) : (
+                      retentionMetrics.usersInGracePeriod.map((u) => (
+                        <tr key={u.id} className="hover:bg-[#181B22]/40 transition-colors">
+                          <td className="px-5 py-3.5 font-bold text-white">@{u.username}</td>
+                          <td className="px-5 py-3.5 font-mono text-gray-400">{u.email}</td>
+                          <td className="px-5 py-3.5 font-mono text-gray-400">
+                            {new Date(u.scheduledDeletionAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <span
+                              className={`font-mono font-bold ${
+                                u.daysRemaining <= 0
+                                  ? 'text-rose-400'
+                                  : u.daysRemaining <= 5
+                                  ? 'text-amber-400'
+                                  : 'text-emerald-400'
+                              }`}
+                            >
+                              {u.daysRemaining <= 0 ? 'Grace Expired' : `${u.daysRemaining} days left`}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 text-right">
+                            <span
+                              className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                u.daysRemaining <= 0
+                                  ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              }`}
+                            >
+                              {u.daysRemaining <= 0 ? 'PENDING PURGE' : 'ACTIVE GRACE'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Retention Policies Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 {
@@ -472,6 +706,77 @@ export default function PrivacyAndDataProtectionPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: PRIVACY & CONSENT AUDIT */}
+        {activeTab === 'AUDIT' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">
+                Cryptographically tracked data privacy actions, consent updates, and export logs.
+              </span>
+              <button
+                onClick={fetchAuditLogs}
+                className="text-xs text-[#00F2FE] hover:underline flex items-center gap-1"
+              >
+                <RefreshCw className="h-3 w-3" /> Refresh Logs
+              </button>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-[#232733] bg-[#12141A]">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-[#232733] bg-[#181B22]/60 text-gray-400 uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="px-5 py-3.5">Action Event</th>
+                    <th className="px-5 py-3.5">Actor / Subject</th>
+                    <th className="px-5 py-3.5">Purpose / Target</th>
+                    <th className="px-5 py-3.5">Timestamp</th>
+                    <th className="px-5 py-3.5 text-right">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#232733]">
+                  {isLoadingAudit ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-gray-500">
+                        Loading privacy audit logs...
+                      </td>
+                    </tr>
+                  ) : auditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-gray-500">
+                        No privacy audit events recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    auditLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-[#181B22]/40 transition-colors">
+                        <td className="px-5 py-4">
+                          <span className="inline-block rounded-md bg-[#232733] px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="font-bold text-white text-xs">
+                            {log.userEmail || log.actorId}
+                          </div>
+                          <div className="text-gray-500 text-[10px] font-mono">{log.actorType}</div>
+                        </td>
+                        <td className="px-5 py-4 font-mono text-[11px] text-gray-300">
+                          {log.details?.purpose || log.targetId || 'N/A'}
+                        </td>
+                        <td className="px-5 py-4 font-mono text-[11px] text-gray-400">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </td>
+                        <td className="px-5 py-4 text-right text-gray-400 text-[11px] max-w-xs truncate">
+                          {JSON.stringify(log.details || {})}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

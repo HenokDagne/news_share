@@ -127,18 +127,34 @@ export class PostsService {
     }
   }
 
+  private async getBlockedUserIds(userId: string): Promise<string[]> {
+    const blocks = await this.prisma.userBlock.findMany({
+      where: {
+        OR: [{ blockerId: userId }, { blockedId: userId }],
+      },
+      select: { blockerId: true, blockedId: true },
+    });
+    const set = new Set<string>();
+    for (const b of blocks) {
+      if (b.blockerId === userId) set.add(b.blockedId);
+      if (b.blockedId === userId) set.add(b.blockerId);
+    }
+    return Array.from(set);
+  }
+
   async feed(userId: string, limit = 20, cursor?: string) {
-    // Followed user ids + current user id
+    // Followed user ids + current user id, minus any blocked accounts
+    const blockedIds = await this.getBlockedUserIds(userId);
     const follows = await this.prisma.follow.findMany({
       where: { followerId: userId },
       select: { followingId: true },
     });
-    const userIds = [userId, ...follows.map((f) => f.followingId)];
+    const userIds = [userId, ...follows.map((f) => f.followingId)].filter((id) => !blockedIds.includes(id));
 
     const rows = await this.prisma.post.findMany({
       where: {
         AND: [
-          { userId: { in: userIds } },
+          { userId: { in: userIds, notIn: blockedIds } },
           feedPostsWhere(userId),
         ],
       },
@@ -152,8 +168,38 @@ export class PostsService {
   }
 
   async timeline(currentUserId?: string, limit = 20, cursor?: string) {
+    const blockedIds = currentUserId ? await this.getBlockedUserIds(currentUserId) : [];
+
+    // Filter out private accounts unless the current viewer follows them
+    let excludedPrivateUserIds: string[] = [];
+    const privateAccounts = await this.prisma.userPrivacyPreference.findMany({
+      where: { privateAccount: true },
+      select: { userId: true },
+    });
+    if (privateAccounts.length > 0) {
+      const privateIds = privateAccounts.map((p) => p.userId);
+      if (!currentUserId) {
+        excludedPrivateUserIds = privateIds;
+      } else {
+        const myFollows = await this.prisma.follow.findMany({
+          where: { followerId: currentUserId, followingId: { in: privateIds } },
+          select: { followingId: true },
+        });
+        const followedPrivateIds = new Set(myFollows.map((f) => f.followingId));
+        followedPrivateIds.add(currentUserId);
+        excludedPrivateUserIds = privateIds.filter((id) => !followedPrivateIds.has(id));
+      }
+    }
+
+    const allExcludedIds = Array.from(new Set([...blockedIds, ...excludedPrivateUserIds]));
+
     const rows = await this.prisma.post.findMany({
-      where: publicPostsWhere(),
+      where: {
+        AND: [
+          publicPostsWhere(),
+          allExcludedIds.length > 0 ? { userId: { notIn: allExcludedIds } } : {},
+        ],
+      },
       take: limit + 1,
       ...cursorArgs(cursor),
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -166,6 +212,39 @@ export class PostsService {
   async userPosts(targetUserId: string, currentUserId?: string, limit = 20, cursor?: string) {
     if (!UUID_REGEX.test(targetUserId)) {
       throw new BadRequestException('Invalid UUID');
+    }
+
+    if (currentUserId) {
+      const isBlocked = await this.prisma.userBlock.findFirst({
+        where: {
+          OR: [
+            { blockerId: currentUserId, blockedId: targetUserId },
+            { blockerId: targetUserId, blockedId: currentUserId },
+          ],
+        },
+      });
+      if (isBlocked) {
+        return toPage([], limit, (row) => this.toResponse(row, currentUserId));
+      }
+    }
+
+    // Check private account access
+    if (currentUserId !== targetUserId) {
+      const targetPref = await this.prisma.userPrivacyPreference.findUnique({
+        where: { userId: targetUserId },
+        select: { privateAccount: true },
+      });
+      if (targetPref?.privateAccount) {
+        if (!currentUserId) {
+          return toPage([], limit, (row) => this.toResponse(row, currentUserId));
+        }
+        const isFollowing = await this.prisma.follow.findUnique({
+          where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } },
+        });
+        if (!isFollowing) {
+          return toPage([], limit, (row) => this.toResponse(row, currentUserId));
+        }
+      }
     }
 
     const rows = await this.prisma.post.findMany({
@@ -293,6 +372,19 @@ export class PostsService {
       throw new NotFoundException('Post not found');
     }
 
+    // Check if post author and user have blocked each other
+    const isBlocked = await this.prisma.userBlock.findFirst({
+      where: {
+        OR: [
+          { blockerId: userId, blockedId: post.userId },
+          { blockerId: post.userId, blockedId: userId },
+        ],
+      },
+    });
+    if (isBlocked) {
+      throw new ForbiddenException('Cannot interact with this post due to an account block');
+    }
+
     await this.prisma.like.upsert({
       where: { userId_postId: { userId, postId } },
       create: { userId, postId },
@@ -330,6 +422,43 @@ export class PostsService {
     });
     if (!post) {
       throw new NotFoundException('Post not found');
+    }
+
+    // Check if post author and commenter have blocked each other
+    const isBlocked = await this.prisma.userBlock.findFirst({
+      where: {
+        OR: [
+          { blockerId: userId, blockedId: post.userId },
+          { blockerId: post.userId, blockedId: userId },
+        ],
+      },
+    });
+    if (isBlocked) {
+      throw new ForbiddenException('Cannot comment on this post due to an account block');
+    }
+
+    // Enforce author comment permissions
+    if (userId !== post.userId) {
+      const authorPref = await this.prisma.userPrivacyPreference.findUnique({
+        where: { userId: post.userId },
+        select: { commentPermission: true },
+      });
+      const perm = authorPref?.commentPermission ?? 'EVERYONE';
+      if (perm === 'NO_ONE') {
+        throw new ForbiddenException('The author has turned off comments on their posts');
+      } else if (perm === 'FOLLOWERS') {
+        const isFollower = await this.prisma.follow.findUnique({
+          where: {
+            followerId_followingId: {
+              followerId: userId,
+              followingId: post.userId,
+            },
+          },
+        });
+        if (!isFollower) {
+          throw new ForbiddenException('Only followers can comment on this post');
+        }
+      }
     }
 
     const comment = await this.prisma.comment.create({

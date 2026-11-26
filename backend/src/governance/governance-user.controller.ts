@@ -6,12 +6,21 @@ import {
   Headers,
   Ip,
   Param,
+  Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GovernanceService } from './governance.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { CreateConsentRecordDto, CreatePrivacyRequestDto } from './dto/governance.dto';
+import { Public } from '../common/decorators/public.decorator';
+import {
+  AcceptPolicyDto,
+  CancelPrivacyRequestDto,
+  CreateConsentRecordDto,
+  CreatePrivacyRequestDto,
+  UpdatePrivacyPreferencesDto,
+} from './dto/governance.dto';
 
 @ApiTags('User Privacy & Safety')
 @Controller()
@@ -20,10 +29,31 @@ export class GovernanceUserController {
 
   // ===================== PUBLIC ACTIVE POLICIES =====================
 
+  @Public()
   @Get('policies/active')
-  @ApiOperation({ summary: 'Get active public policies (Terms, Privacy Policy, AUP)' })
+  @ApiOperation({ summary: 'Get active public policies (Terms, Privacy Policy, AUP, etc.)' })
   getActivePolicies() {
     return this.governance.getActivePolicies();
+  }
+
+  @Public()
+  @Get('policies/:code')
+  @ApiOperation({ summary: 'Get a specific active policy by policy code (e.g., POL-PRIVACY, POL-TERMS)' })
+  getPolicyByCode(@Param('code') code: string) {
+    return this.governance.getPolicyByCode(code);
+  }
+
+  @Post('policies/:id/accept')
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Record user acceptance of a specific policy version' })
+  acceptPolicy(
+    @CurrentUser('id') userId: string,
+    @Param('id') policyId: string,
+    @Body() dto: AcceptPolicyDto,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.governance.acceptPolicy(userId, policyId, dto.versionNumber, ipAddress, userAgent);
   }
 
   // ===================== DATA SUBJECT PRIVACY RIGHTS =====================
@@ -45,6 +75,27 @@ export class GovernanceUserController {
     return this.governance.createUserPrivacyRequest(userId, dto);
   }
 
+  @Post('me/privacy/deletion/cancel')
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Cancel pending account deletion request during the 30-day grace period' })
+  cancelAccountDeletion(
+    @CurrentUser('id') userId: string,
+    @Body() dto: CancelPrivacyRequestDto,
+  ) {
+    return this.governance.cancelAccountDeletion(userId, dto?.reason);
+  }
+
+  @Delete('me/privacy/requests/:id')
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Cancel a pending privacy request' })
+  cancelRequest(
+    @CurrentUser('id') userId: string,
+    @Param('id') requestId: string,
+    @Body() dto: CancelPrivacyRequestDto,
+  ) {
+    return this.governance.cancelPrivacyRequest(userId, requestId, dto?.reason);
+  }
+
   @Get('me/privacy/export-data')
   @ApiBearerAuth('JWT')
   @ApiOperation({ summary: 'Download personal data archive (Right of Access / Proclamation 1321/2024)' })
@@ -52,9 +103,30 @@ export class GovernanceUserController {
     return this.governance.exportUserData(userId);
   }
 
+  // ===================== PRIVACY PREFERENCES & CONSENT =====================
+
+  @Get('me/privacy/preferences')
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Retrieve persistent database-backed user privacy preferences across devices' })
+  getPreferences(@CurrentUser('id') userId: string) {
+    return this.governance.getPrivacyPreferences(userId);
+  }
+
+  @Put('me/privacy/preferences')
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Update persistent user privacy preferences and append to consent history' })
+  updatePreferences(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdatePrivacyPreferencesDto,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.governance.updatePrivacyPreferences(userId, dto, ipAddress, userAgent);
+  }
+
   @Post('me/privacy/consent')
   @ApiBearerAuth('JWT')
-  @ApiOperation({ summary: 'Record user consent preference' })
+  @ApiOperation({ summary: 'Record single user consent preference (backwards compatible)' })
   recordConsent(
     @CurrentUser('id') userId: string,
     @Body() dto: CreateConsentRecordDto,
@@ -66,9 +138,26 @@ export class GovernanceUserController {
 
   @Get('me/privacy/consents')
   @ApiBearerAuth('JWT')
-  @ApiOperation({ summary: 'Get user active consent records' })
+  @ApiOperation({ summary: 'Get user active consent audit history' })
   getMyConsents(@CurrentUser('id') userId: string) {
     return this.governance.getUserConsents(userId);
+  }
+
+  @Get('me/security/checkup')
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Run comprehensive user security checkup (sessions, password age, telemetry)' })
+  getSecurityCheckup(@CurrentUser('id') userId: string) {
+    return this.governance.getSecurityCheckup(userId);
+  }
+
+  @Post('me/privacy/contacts/match')
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Match contacts against registered platform users' })
+  matchContacts(
+    @CurrentUser('id') userId: string,
+    @Body('hashes') hashes: string[],
+  ) {
+    return this.governance.matchContacts(userId, hashes || []);
   }
 
   // ===================== SAFETY & BLOCKING =====================
@@ -82,7 +171,7 @@ export class GovernanceUserController {
 
   @Post('users/:id/block')
   @ApiBearerAuth('JWT')
-  @ApiOperation({ summary: 'Block a user' })
+  @ApiOperation({ summary: 'Block a user (severs all follows and restricts interaction)' })
   blockUser(
     @CurrentUser('id') userId: string,
     @Param('id') targetUserId: string,
