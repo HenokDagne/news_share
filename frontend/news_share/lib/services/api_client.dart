@@ -760,17 +760,20 @@ class ApiClient {
       'limit': limit.toString(),
       if (cursor != null) 'cursor': cursor,
     };
-    final uri = Uri.parse('$baseUrl/users/$targetUserId/followers').replace(queryParameters: queryParams);
-    final res = await http.get(uri, headers: _headers());
-    final data = _parseResponse(res);
-    if (data is Map && data['data'] is List) {
-      return List<Map<String, dynamic>>.from(data['data']);
-    }
-    if (data is Map && data['items'] is List) {
-      return List<Map<String, dynamic>>.from(data['items']);
-    }
-    if (data is List) {
-      return List<Map<String, dynamic>>.from(data);
+    final queryString = Uri(queryParameters: queryParams).query;
+    try {
+      final data = await _sendRequest('GET', '/users/$targetUserId/followers?$queryString', requiresAuth: false);
+      if (data is Map && data['data'] is List) {
+        return List<Map<String, dynamic>>.from(data['data']);
+      }
+      if (data is Map && data['items'] is List) {
+        return List<Map<String, dynamic>>.from(data['items']);
+      }
+      if (data is List) {
+        return List<Map<String, dynamic>>.from(data);
+      }
+    } catch (e) {
+      debugPrint('getFollowers error: $e');
     }
     return [];
   }
@@ -780,17 +783,20 @@ class ApiClient {
       'limit': limit.toString(),
       if (cursor != null) 'cursor': cursor,
     };
-    final uri = Uri.parse('$baseUrl/users/$targetUserId/following').replace(queryParameters: queryParams);
-    final res = await http.get(uri, headers: _headers());
-    final data = _parseResponse(res);
-    if (data is Map && data['data'] is List) {
-      return List<Map<String, dynamic>>.from(data['data']);
-    }
-    if (data is Map && data['items'] is List) {
-      return List<Map<String, dynamic>>.from(data['items']);
-    }
-    if (data is List) {
-      return List<Map<String, dynamic>>.from(data);
+    final queryString = Uri(queryParameters: queryParams).query;
+    try {
+      final data = await _sendRequest('GET', '/users/$targetUserId/following?$queryString', requiresAuth: false);
+      if (data is Map && data['data'] is List) {
+        return List<Map<String, dynamic>>.from(data['data']);
+      }
+      if (data is Map && data['items'] is List) {
+        return List<Map<String, dynamic>>.from(data['items']);
+      }
+      if (data is List) {
+        return List<Map<String, dynamic>>.from(data);
+      }
+    } catch (e) {
+      debugPrint('getFollowing error: $e');
     }
     return [];
   }
@@ -1173,31 +1179,173 @@ class ApiClient {
     return res is Map<String, dynamic> ? res : {};
   }
 
-  Future<List<Map<String, dynamic>>> getMessages(String conversationId, {int limit = 50}) async {
+  Future<Map<String, dynamic>> getMessages(
+    String conversationId, {
+    String? cursor,
+    int limit = 30,
+  }) async {
     try {
-      final res = await _sendRequest('GET', '/conversations/$conversationId/messages?limit=$limit');
-      if (res is List) {
-        return List<Map<String, dynamic>>.from(res);
+      String path = '/messages/conversations/$conversationId/messages?limit=$limit';
+      if (cursor != null && cursor.isNotEmpty) {
+        path += '&cursor=$cursor';
       }
-      return [];
+      final res = await _sendRequest('GET', path);
+      if (res is Map<String, dynamic>) {
+        final msgs = res['messages'] is List
+            ? List<Map<String, dynamic>>.from(res['messages'])
+            : <Map<String, dynamic>>[];
+        return {
+          'messages': msgs,
+          'nextCursor': res['nextCursor'],
+          'hasMore': res['hasMore'] == true,
+        };
+      }
+      if (res is List) {
+        return {
+          'messages': List<Map<String, dynamic>>.from(res),
+          'nextCursor': null,
+          'hasMore': false,
+        };
+      }
+      return {'messages': <Map<String, dynamic>>[], 'nextCursor': null, 'hasMore': false};
     } catch (e) {
       debugPrint('getMessages error: $e');
-      return [];
+      return {'messages': <Map<String, dynamic>>[], 'nextCursor': null, 'hasMore': false};
     }
   }
 
-  Future<Map<String, dynamic>> sendMessage(String conversationId, String content) async {
+  Future<Map<String, dynamic>> sendMessage(
+    String conversationId,
+    String content, {
+    String? idempotencyKey,
+    String messageType = 'TEXT',
+    List<String>? attachmentIds,
+  }) async {
+    final Map<String, dynamic> body = {
+      'content': content,
+      'messageType': messageType,
+    };
+    if (idempotencyKey != null) body['idempotencyKey'] = idempotencyKey;
+    if (attachmentIds != null && attachmentIds.isNotEmpty) {
+      body['attachmentIds'] = attachmentIds;
+    }
+
     final res = await _sendRequest(
       'POST',
-      '/conversations/$conversationId/messages',
+      '/messages/conversations/$conversationId/messages',
+      body: body,
+    );
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<Map<String, dynamic>> editMessage(String messageId, String content) async {
+    final res = await _sendRequest(
+      'PATCH',
+      '/messages/$messageId',
       body: {'content': content},
     );
     return res is Map<String, dynamic> ? res : {};
   }
 
+  Future<void> deleteMessage(String messageId) async {
+    await _sendRequest('DELETE', '/messages/$messageId');
+  }
+
+  Future<Map<String, dynamic>> requestUploadUrl({
+    required String conversationId,
+    required String filename,
+    required String mimeType,
+    required int bytes,
+  }) async {
+    final res = await _sendRequest(
+      'POST',
+      '/messages/attachments/upload-url',
+      body: {
+        'conversationId': conversationId,
+        'filename': filename,
+        'mimeType': mimeType,
+        'bytes': bytes,
+      },
+    );
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<Map<String, dynamic>> confirmAttachment({
+    required String attachmentId,
+    required String cloudinaryPublicId,
+  }) async {
+    final res = await _sendRequest(
+      'POST',
+      '/messages/attachments/confirm',
+      body: {
+        'attachmentId': attachmentId,
+        'cloudinaryPublicId': cloudinaryPublicId,
+      },
+    );
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<Map<String, dynamic>> uploadAttachmentToCloudinary({
+    required String conversationId,
+    required dynamic fileOrBytes,
+    required String filename,
+    required String mimeType,
+  }) async {
+    final int bytes = fileOrBytes is List<int>
+        ? fileOrBytes.length
+        : (fileOrBytes is File ? await fileOrBytes.length() : 0);
+
+    // 1. Request signed payload from backend
+    final payload = await requestUploadUrl(
+      conversationId: conversationId,
+      filename: filename,
+      mimeType: mimeType,
+      bytes: bytes,
+    );
+
+    final uploadUrl = payload['uploadUrl'] as String;
+    final attachmentId = payload['attachmentId'] as String;
+    final publicId = payload['publicId'] as String;
+    final timestamp = payload['timestamp'].toString();
+    final signature = payload['signature'] as String;
+    final apiKey = payload['apiKey'] as String;
+    final folder = payload['folder'] as String;
+
+    // 2. Direct upload to Cloudinary
+    final request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
+    request.fields['api_key'] = apiKey;
+    request.fields['timestamp'] = timestamp;
+    request.fields['signature'] = signature;
+    request.fields['folder'] = folder;
+    request.fields['public_id'] = publicId;
+    request.fields['type'] = 'authenticated';
+
+    if (fileOrBytes is File) {
+      request.files.add(await http.MultipartFile.fromPath('file', fileOrBytes.path));
+    } else if (fileOrBytes is List<int>) {
+      request.files.add(http.MultipartFile.fromBytes('file', fileOrBytes, filename: filename));
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode >= 400) {
+      throw Exception('Cloudinary upload failed with code ${response.statusCode}: ${response.body}');
+    }
+
+    final resJson = jsonDecode(response.body);
+    final returnedPublicId = resJson['public_id']?.toString() ?? publicId;
+
+    // 3. Confirm with backend
+    return confirmAttachment(
+      attachmentId: attachmentId,
+      cloudinaryPublicId: returnedPublicId,
+    );
+  }
+
   Future<void> markConversationRead(String conversationId) async {
     try {
-      await _sendRequest('PATCH', '/conversations/$conversationId/read');
+      await _sendRequest('POST', '/messages/conversations/$conversationId/read');
     } catch (e) {
       debugPrint('markConversationRead error: $e');
     }
@@ -1205,7 +1353,7 @@ class ApiClient {
 
   Future<int> getUnreadDirectMessageCount() async {
     try {
-      final res = await _sendRequest('GET', '/conversations/unread-count');
+      final res = await _sendRequest('GET', '/messages/conversations/unread-count');
       if (res is Map && res['count'] != null) {
         return (res['count'] as num).toInt();
       }

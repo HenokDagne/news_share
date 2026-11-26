@@ -215,22 +215,40 @@ class _ConversationsListScreenState extends State<ConversationsListScreen> {
                                     ),
                                   );
                                 },
-                                child: CircleAvatar(
-                                  radius: 26,
-                                  backgroundColor: const Color(0xFF262A34),
-                                  backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                                      ? NetworkImage(avatarUrl)
-                                      : null,
-                                  child: (avatarUrl == null || avatarUrl.isEmpty)
-                                      ? Text(
-                                          username.isNotEmpty ? username[0].toUpperCase() : '?',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 18,
+                                child: Stack(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 26,
+                                      backgroundColor: const Color(0xFF262A34),
+                                      backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
+                                          ? NetworkImage(avatarUrl)
+                                          : null,
+                                      child: (avatarUrl == null || avatarUrl.isEmpty)
+                                          ? Text(
+                                              username.isNotEmpty ? username[0].toUpperCase() : '?',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    if (p['isOnline'] == true)
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: Container(
+                                          width: 14,
+                                          height: 14,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF10B981),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: const Color(0xFF0F1115), width: 2),
                                           ),
-                                        )
-                                      : null,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                               title: Row(

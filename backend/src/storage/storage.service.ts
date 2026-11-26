@@ -170,4 +170,86 @@ export class StorageService {
       this.logger.warn(`Failed to delete Cloudinary asset ${publicId}: ${(err as Error).message}`);
     }
   }
+
+  /**
+   * Generates a signed Cloudinary direct upload payload for secure client-side uploads.
+   * Client receives signature, api_key, timestamp, and unique public_id; API secret never leaves the server.
+   */
+  generateSignedUploadPayload(folder: string, publicId: string, resourceType: 'image' | 'raw' = 'image') {
+    const fullFolder = `${this.rootFolder}/${folder}`;
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    const apiSecret = this.config.get<string>('CLOUDINARY_API_SECRET') || 'demo_secret';
+    const apiKey = this.config.get<string>('CLOUDINARY_API_KEY') || 'demo_key';
+    const cloudName = this.config.get<string>('CLOUDINARY_CLOUD_NAME') || 'demo';
+
+    const paramsToSign: Record<string, any> = {
+      folder: fullFolder,
+      public_id: publicId,
+      timestamp,
+      type: 'authenticated',
+    };
+
+    let signature = 'mock_signature';
+    if (this.isConfigured) {
+      signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
+    }
+
+    return {
+      timestamp,
+      signature,
+      apiKey,
+      cloudName,
+      folder: fullFolder,
+      publicId,
+      resourceType,
+      deliveryType: 'authenticated',
+      uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
+    };
+  }
+
+  /**
+   * Verifies an uploaded asset directly against Cloudinary Admin API
+   */
+  async verifyCloudinaryAsset(publicId: string, resourceType: 'image' | 'raw' = 'image') {
+    if (!this.isConfigured) {
+      return {
+        bytes: 10240,
+        format: 'jpg',
+        width: 800,
+        height: 600,
+        resourceType,
+      };
+    }
+    try {
+      const res = await cloudinary.api.resource(publicId, {
+        resource_type: resourceType,
+        type: 'authenticated',
+      });
+      return {
+        bytes: res.bytes,
+        format: res.format,
+        width: res.width,
+        height: res.height,
+        resourceType: res.resource_type,
+      };
+    } catch (e) {
+      this.logger.warn(`Could not verify Cloudinary asset ${publicId}: ${(e as Error).message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Generates a short-lived signed Cloudinary URL for authorized preview/download
+   */
+  generateSignedDownloadUrl(publicId: string, resourceType: 'image' | 'raw' = 'image', expiresInSeconds = 3600) {
+    if (!this.isConfigured) {
+      return `https://res.cloudinary.com/demo/${resourceType}/upload/v1/${publicId}.jpg`;
+    }
+    return cloudinary.url(publicId, {
+      resource_type: resourceType,
+      type: 'authenticated',
+      sign_url: true,
+      expires_at: Math.round(Date.now() / 1000) + expiresInSeconds,
+    });
+  }
 }

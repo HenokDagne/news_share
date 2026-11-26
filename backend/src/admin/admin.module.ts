@@ -68,6 +68,7 @@ import { UserGateway } from './realtime/user.gateway';
     AdminAuditService,
     RoleManagementService,
     AccessReviewService,
+    UserGateway,
   ],
 })
 export class AdminModule {}

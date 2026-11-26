@@ -16,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { FollowsService } from './follows.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { ProfileResponseDto } from '../users/users.mapper';
 import { ApiPaginatedResponse } from '../common/swagger/api-paginated-response.decorator';
@@ -68,6 +69,7 @@ export class FollowsController {
     return this.follows.getFollowStatus(me, targetId);
   }
 
+  @Public()
   @Get('followers')
   @ApiOperation({ summary: "Get a user's followers list" })
   @ApiPaginatedResponse(ProfileResponseDto)
@@ -78,6 +80,7 @@ export class FollowsController {
     return this.follows.getFollowers(targetId, q.limit, q.cursor);
   }
 
+  @Public()
   @Get('following')
   @ApiOperation({ summary: 'Get list of users this user follows' })
   @ApiPaginatedResponse(ProfileResponseDto)
