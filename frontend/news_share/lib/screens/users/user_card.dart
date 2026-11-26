@@ -66,6 +66,7 @@ class _UserCardState extends State<UserCard> {
   @override
   Widget build(BuildContext context) {
     final isAuthenticated = ApiClient.instance.isAuthenticated;
+    final isMe = isAuthenticated && widget.user.id == ApiClient.instance.currentUserId;
 
     return Card(
       color: Colors.white,
@@ -92,7 +93,7 @@ class _UserCardState extends State<UserCard> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (isAuthenticated) ...[
+                  if (isAuthenticated && !isMe) ...[
                     const SizedBox(height: 6),
                     SizedBox(
                       height: 36,

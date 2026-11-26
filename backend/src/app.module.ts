@@ -13,6 +13,7 @@ import { UsersModule } from './users/users.module';
 import { PostsModule } from './posts/posts.module';
 import { FollowsModule } from './follows/follows.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MessagesModule } from './messages/messages.module';
 import { AuditModule } from './audit/audit.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { EnforcementModule } from './enforcement/enforcement.module';
@@ -59,6 +60,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
     PostsModule,
     FollowsModule,
     NotificationsModule,
+    MessagesModule,
   ],
   providers: [
     {

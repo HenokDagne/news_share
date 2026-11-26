@@ -99,10 +99,12 @@ class _UserListPageState extends State<UserListPage> {
 
   Future<void> _fetchSuggestedUsers() async {
     try {
+      final myId = ApiClient.instance.currentUserId;
       final users = await ApiClient.instance.getUsers(limit: 25);
+      final filtered = users.where((u) => u['id'] != myId).toList();
       if (mounted) {
         setState(() {
-          _users = users;
+          _users = filtered;
         });
       }
     } catch (e) {
@@ -129,12 +131,31 @@ class _UserListPageState extends State<UserListPage> {
   }
 
   Future<void> _performSearch(String query) async {
+    final myUser = ApiClient.instance.currentUser;
+    final myId = myUser?.id;
+    final myUsername = myUser?.username.toLowerCase();
+    final term = query.trim().toLowerCase();
+
+    if (myUser != null && (term == myUsername || term == myId || term == myUser.email.toLowerCase())) {
+      if (mounted) {
+        setState(() {
+          _searchedUsers = [];
+          _isSearching = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You cannot search for yourself.')),
+        );
+      }
+      return;
+    }
+
     setState(() => _isSearching = true);
     try {
       final results = await ApiClient.instance.getUsers(search: query, limit: 30);
+      final filtered = results.where((u) => u['id'] != myId).toList();
       if (mounted && _searchQuery == query) {
         setState(() {
-          _searchedUsers = results;
+          _searchedUsers = filtered;
           _isSearching = false;
         });
       }
@@ -148,6 +169,13 @@ class _UserListPageState extends State<UserListPage> {
     if (!ApiClient.instance.isAuthenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please log in to follow creators')),
+      );
+      return;
+    }
+
+    if (targetUserId == ApiClient.instance.currentUserId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot follow yourself')),
       );
       return;
     }

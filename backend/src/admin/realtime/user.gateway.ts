@@ -77,6 +77,17 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server?.to(`user:${event.userId}`).emit('activity.new', event.activity);
   }
 
+  @OnEvent(EVENTS.DIRECT_MESSAGE_CREATED)
+  onDirectMessageCreated(event: { message: any; recipientId: string; senderId: string }) {
+    this.server?.to(`user:${event.recipientId}`).emit('dm.message.new', event.message);
+    this.server?.to(`user:${event.senderId}`).emit('dm.message.new', event.message);
+  }
+
+  @OnEvent(EVENTS.DIRECT_MESSAGE_READ)
+  onDirectMessageRead(event: { conversationId: string; senderId: string; recipientId: string }) {
+    this.server?.to(`user:${event.senderId}`).emit('dm.message.read', event);
+  }
+
   @OnEvent(EVENTS.RESTRICTION_APPLIED)
   onRestrictionApplied(event: { userId: string; type: string }) {
     this.server?.to(`user:${event.userId}`).emit('account.restricted', {

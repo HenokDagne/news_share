@@ -201,6 +201,22 @@ export class UsersService {
   async searchUsers(dto: SearchUsersDto, currentUserId?: string) {
     const { search, limit = 20, cursor } = dto;
 
+    if (currentUserId && search && search.trim() !== '') {
+      const term = search.trim().toLowerCase();
+      const me = await this.prisma.user.findUnique({
+        where: { id: currentUserId },
+        include: { profile: true },
+      });
+      if (
+        me &&
+        (term === currentUserId.toLowerCase() ||
+          (me.profile && term === me.profile.username.toLowerCase()) ||
+          term === me.email.toLowerCase())
+      ) {
+        throw new BadRequestException('You cannot search for yourself');
+      }
+    }
+
     const where: any = {};
     if (search && search.trim() !== '') {
       const term = search.trim();
@@ -228,11 +244,10 @@ export class UsersService {
         select: { blockerId: true, blockedId: true },
       });
       const blockedIds = blocks.map((b) => (b.blockerId === currentUserId ? b.blockedId : b.blockerId));
-      if (blockedIds.length > 0) {
-        where.id = where.id
-          ? { ...where.id, notIn: Array.from(new Set([...(where.id.notIn || []), ...blockedIds])) }
-          : { notIn: blockedIds };
-      }
+      const excludedIds = Array.from(
+        new Set([...(where.id?.notIn || []), currentUserId, ...blockedIds]),
+      );
+      where.id = { notIn: excludedIds };
     }
 
     const rows = await this.prisma.profile.findMany({

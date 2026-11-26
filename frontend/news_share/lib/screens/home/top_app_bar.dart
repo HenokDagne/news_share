@@ -18,6 +18,7 @@ import '../notification/notification_page.dart';
 import '../profile/profile_page.dart';
 import '../users/user_list.dart';
 import '../auth/login.dart';
+import '../messages/conversations_list_screen.dart';
 
 enum TopNavBarType {
   home,
@@ -308,7 +309,7 @@ class _InstagramTopNavBarState extends State<InstagramTopNavBar> {
                 ],
               ),
 
-            // Direct Message / Chat / Activity Icon
+            // Direct Message / Chat Icon
             if (widget.showMessages)
               IconButton(
                 icon: const Icon(
@@ -316,11 +317,11 @@ class _InstagramTopNavBarState extends State<InstagramTopNavBar> {
                   color: Colors.white,
                   size: 22,
                 ),
-                tooltip: 'Activity & Messages',
+                tooltip: 'Direct Messages',
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ActivityPage()),
+                    MaterialPageRoute(builder: (_) => const ConversationsListScreen()),
                   );
                 },
               ),

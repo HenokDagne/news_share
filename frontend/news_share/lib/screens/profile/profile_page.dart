@@ -29,6 +29,8 @@ import '../activity/activity_page.dart';
 import '../settings/settings_page.dart';
 import '../users/user_list.dart';
 import '../auth/login.dart';
+import '../messages/conversations_list_screen.dart';
+import '../messages/chat_screen.dart';
 
 class ProfilePage extends StatefulWidget {
   final String? userId;
@@ -164,7 +166,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     final targetId = widget.userId;
-    if (targetId == null) return;
+    if (targetId == null || targetId == ApiClient.instance.currentUserId) return;
 
     final next = !_isFollowing;
     final oldFollowers = _followersCount;
@@ -212,7 +214,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     final uid = user['id']?.toString();
-    if (uid == null) return;
+    if (uid == null || uid == ApiClient.instance.currentUserId) return;
 
     final prevStatus = user['isFollowing'] == true;
     final nextStatus = !prevStatus;
@@ -378,7 +380,17 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       initCameraService();
       final result = await CameraService.instance.capturePhoto(context);
-      if (!result.success || result.imagePath == null) return;
+      if (!result.success || result.imagePath == null) {
+        if (!result.canceled && result.errorMessage != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.errorMessage!),
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+          );
+        }
+        return;
+      }
       await _uploadAvatarFile(File(result.imagePath!));
     } catch (e) {
       if (mounted) {
@@ -1109,7 +1121,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _blockOtherUser(String username) async {
     final targetId = widget.userId;
-    if (targetId == null) return;
+    if (targetId == null || targetId == ApiClient.instance.currentUserId) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1309,8 +1321,9 @@ class _ProfilePageState extends State<ProfilePage> {
               IconButton(
                 icon: const Icon(Icons.near_me_outlined, color: Colors.white, size: 25),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Direct messages coming soon!')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ConversationsListScreen()),
                   );
                 },
               ),
@@ -1559,10 +1572,36 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: SizedBox(
                               height: 36,
                               child: ElevatedButton(
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Direct message with @$username opening...')),
-                                  );
+                                onPressed: () async {
+                                  final targetUserId = widget.userId;
+                                  if (targetUserId == null) return;
+                                  try {
+                                    final conv = await ApiClient.instance.getOrCreateConversation(targetUserId);
+                                    if (!mounted) return;
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ChatScreen(
+                                          conversationId: conv['id'] as String,
+                                          recipientProfile: {
+                                            'id': targetUserId,
+                                            'username': username,
+                                            'fullName': fullName ?? username,
+                                            'avatarUrl': avatarUrl,
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Cannot open conversation: $e'),
+                                          backgroundColor: const Color(0xFFEF4444),
+                                        ),
+                                      );
+                                    }
+                                  }
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF1E222B),

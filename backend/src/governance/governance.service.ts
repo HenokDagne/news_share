@@ -1648,6 +1648,10 @@ In accordance with Article 33 of Ethiopian Personal Data Protection Proclamation
   }
 
   async unblockUser(userId: string, targetUserId: string) {
+    if (userId === targetUserId) {
+      throw new BadRequestException('You cannot unblock yourself');
+    }
+
     await this.prisma.userBlock.deleteMany({
       where: { blockerId: userId, blockedId: targetUserId },
     });

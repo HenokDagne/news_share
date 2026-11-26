@@ -6,7 +6,9 @@ import 'mobile_camera_service.dart';
 import 'windows_camera_service.dart';
 
 void initCameraService() {
-  if (!kIsWeb && Platform.isWindows) {
+  if (kIsWeb) {
+    CameraService.register(WindowsCameraService());
+  } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     CameraService.register(WindowsCameraService());
   } else {
     CameraService.register(MobileCameraService());

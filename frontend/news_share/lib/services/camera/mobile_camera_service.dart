@@ -24,7 +24,16 @@ class MobileCameraService implements CameraService {
       }
       return CameraCaptureResult.canceled();
     } catch (e) {
-      return CameraCaptureResult.error('Camera error: $e');
+      // If camera is unsupported (e.g. web/desktop without cameraDelegate), fall back to gallery picker
+      try {
+        final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
+        if (file != null) {
+          return CameraCaptureResult.success(file.path);
+        }
+        return CameraCaptureResult.canceled();
+      } catch (_) {
+        return CameraCaptureResult.error('Camera error: $e');
+      }
     }
   }
 

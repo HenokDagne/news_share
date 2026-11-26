@@ -10,6 +10,8 @@ export const EVENTS = {
   ADMIN_ACTION: 'admin.action',
   SESSION_REVOKED: 'session.revoked',
   ACTIVITY_CREATED: 'activity.created',
+  DIRECT_MESSAGE_CREATED: 'dm.message.created',
+  DIRECT_MESSAGE_READ: 'dm.message.read',
 } as const;
 
 export class UserFollowedEvent {

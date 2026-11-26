@@ -1143,4 +1143,75 @@ class ApiClient {
       return [];
     }
   }
+
+  // ===================== DIRECT MESSAGING (DM) =====================
+
+  Future<Map<String, dynamic>> getOrCreateConversation(String recipientId) async {
+    final res = await _sendRequest(
+      'POST',
+      '/conversations',
+      body: {'recipientId': recipientId},
+    );
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<List<Map<String, dynamic>>> getConversations() async {
+    try {
+      final res = await _sendRequest('GET', '/conversations');
+      if (res is List) {
+        return List<Map<String, dynamic>>.from(res);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('getConversations error: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getConversation(String conversationId) async {
+    final res = await _sendRequest('GET', '/conversations/$conversationId');
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<List<Map<String, dynamic>>> getMessages(String conversationId, {int limit = 50}) async {
+    try {
+      final res = await _sendRequest('GET', '/conversations/$conversationId/messages?limit=$limit');
+      if (res is List) {
+        return List<Map<String, dynamic>>.from(res);
+      }
+      return [];
+    } catch (e) {
+      debugPrint('getMessages error: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> sendMessage(String conversationId, String content) async {
+    final res = await _sendRequest(
+      'POST',
+      '/conversations/$conversationId/messages',
+      body: {'content': content},
+    );
+    return res is Map<String, dynamic> ? res : {};
+  }
+
+  Future<void> markConversationRead(String conversationId) async {
+    try {
+      await _sendRequest('PATCH', '/conversations/$conversationId/read');
+    } catch (e) {
+      debugPrint('markConversationRead error: $e');
+    }
+  }
+
+  Future<int> getUnreadDirectMessageCount() async {
+    try {
+      final res = await _sendRequest('GET', '/conversations/unread-count');
+      if (res is Map && res['count'] != null) {
+        return (res['count'] as num).toInt();
+      }
+      return 0;
+    } catch (e) {
+      return 0;
+    }
+  }
 }
